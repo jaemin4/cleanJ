@@ -13,6 +13,7 @@ public class StockService {
         command.getProducts().forEach(product -> {
             Stock stock = stockRepository.findByProductId(product.getProductId());
             stock.deduct(product.getQuantity().intValue());
+            stockRepository.save(stock);
         });
     }
 
