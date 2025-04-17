@@ -17,9 +17,6 @@ public class Coupon {
     private Long id;
 
     @Column(nullable = false)
-    private Long userId;
-
-    @Column(nullable = false)
     private String title;
 
     @Column(nullable = false)
@@ -27,6 +24,16 @@ public class Coupon {
 
     @Column(nullable = false)
     private Long quantity;
+
+    private Coupon(String title, int discountRate, Long quantity) {
+        this.title = title;
+        this.discountRate = discountRate;
+        this.quantity = quantity;
+    }
+
+    public static Coupon create(String title, int discountRate, Long quantity) {
+        return new Coupon(title, discountRate, quantity);
+    }
 
     // 수량 감소 메서드
     public void use() {
