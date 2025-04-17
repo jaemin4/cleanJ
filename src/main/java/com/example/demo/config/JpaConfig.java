@@ -9,7 +9,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
 @EnableJpaAuditing
-@EnableJpaRepositories(basePackages = "clean.ecd")
+@EnableJpaRepositories(basePackages = "com.example.demo")
 public class JpaConfig {
     @Bean
     public PlatformTransactionManager transactionManager() {
