@@ -16,6 +16,7 @@ public class BalanceService {
     @Transactional
     public void charge(BalanceCommand.Charge command) {
         log.info("[BalanceService] 충전 요청: userId={}, amount={}", command.getUserId(), command.getAmount());
+
         Balance balance = balanceRepository.findByUserId(command.getUserId())
                 .map(b -> {
                     log.info("[BalanceService] 기존 잔액 존재. 기존 금액: {}, 충전 금액: {}", b.getAmount(), command.getAmount());
@@ -46,7 +47,7 @@ public class BalanceService {
                     b.use(command.getAmount());
                     return balanceRepository.save(b);
                 })
-                .orElseThrow(() -> new RuntimeException("잔액이 존재하지 않습니다."));
+                .orElseThrow(() -> new RuntimeException("계좌가 존재하지 않습니다."));
 
 
         balanceHistoryRepository.save(

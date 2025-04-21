@@ -13,8 +13,6 @@ import lombok.NoArgsConstructor;
 })
 public class Balance {
 
-    private static final long MAX_BALANCE_AMOUNT = 10_000_000L;
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "balance_id")
@@ -32,6 +30,10 @@ public class Balance {
     }
 
     public static Balance create(Long userId, long amount) {
+        if(amount <=0){
+            throw new IllegalArgumentException("요청 금액이 잘못되었습니다.");
+        }
+
         return new Balance(userId, amount);
     }
 
@@ -39,9 +41,7 @@ public class Balance {
         if (amount <= 0) {
             throw new IllegalArgumentException("충전 금액은 0보다 커야 합니다.");
         }
-        if (this.amount + amount > MAX_BALANCE_AMOUNT) {
-            throw new IllegalArgumentException("최대 금액을 초과할 수 없습니다.");
-        }
+
         this.amount += amount;
     }
 
