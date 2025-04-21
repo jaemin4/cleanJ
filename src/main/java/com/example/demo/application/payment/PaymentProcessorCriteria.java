@@ -44,6 +44,10 @@ public class PaymentProcessorCriteria {
             return CouponCommand.Use.of(couponId,userId);
         }
 
+        public CouponCommand.GetDiscountRate toGetDiscountRateCommand(){
+            return CouponCommand.GetDiscountRate.of(couponId);
+        }
+
         public PaymentHistoryCommand.Save toPaymentHistoryCommand(String transactionId, String status, Long amount ) {
             return PaymentHistoryCommand.Save.of(userId,amount,orderId,transactionId,status);
         }

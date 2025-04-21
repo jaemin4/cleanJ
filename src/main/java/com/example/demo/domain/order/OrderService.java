@@ -25,7 +25,6 @@ public class OrderService {
 
         Order order = Order.create(
                 command.getUserId(),
-                command.getDiscountRate(),
                 command.getProductTotalAmount()
         );
         orderRepository.save(order);
@@ -60,7 +59,7 @@ public class OrderService {
         );
     }
 
-    public OrderInfo.GetOrderItems getOrderItemById(Long orderId) {
+    public OrderInfo.GetOrderItems getOrderItemByOrderId(Long orderId) {
         List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
 
         return OrderInfo.GetOrderItems.of(

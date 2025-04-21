@@ -36,13 +36,11 @@ public class Order {
         this.orderStatus = orderStatus;
     }
 
-    public static Order create(Long userId, double discountRate, long productTotalPrice) {
+    public static Order create(Long userId, long productTotalPrice) {
         if (userId == null || userId <= 0) {
             throw new IllegalArgumentException("userId는 1 이상이어야 합니다.");
         }
-        if (discountRate < 0.0) {
-            throw new IllegalArgumentException("할인율은 0 이상이어야 합니다.");
-        }
+
         if (productTotalPrice < 0) {
             throw new IllegalArgumentException("상품 총액은 0 이상이어야 합니다.");
         }

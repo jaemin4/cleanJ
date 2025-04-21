@@ -22,8 +22,10 @@ public class PaymentRequest {
         @Positive(message = "주문 ID는 양수여야 합니다.")
         private Long orderId;
 
-        public PaymentCriteria.Payment toCriteria() {
-            return PaymentCriteria.Payment.of(userId, orderId);
+        private Long couponId;
+
+        public PaymentCriteria.pay toCriteria() {
+            return PaymentCriteria.pay.of(userId, orderId,couponId);
         }
     }
 

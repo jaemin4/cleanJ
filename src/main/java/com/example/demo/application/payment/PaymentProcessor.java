@@ -26,7 +26,11 @@ public class PaymentProcessor {
         long finalAmount = criteria.getFinalAmount();
         try {
             // 1. 쿠폰 사용
-            couponService.use(criteria.toUseCouponCommand());
+            if(criteria.getCouponId() != null){
+                couponService.use(criteria.toUseCouponCommand());
+                double discountRate = couponService.getDiscountRate(criteria.toGetDiscountRateCommand());
+                finalAmount = (long) (finalAmount - (finalAmount * discountRate * 0.01));
+            }
 
             // 2. 잔액 차감
             balanceService.use(criteria.toBalanceUseCommand(finalAmount));
@@ -46,6 +50,7 @@ public class PaymentProcessor {
 
         } catch (Exception e) {
             log.warn("결제 실패, 주문 상태 취소 및 재고 복구: orderId={}", criteria.getOrderId());
+
             // 5-1. 주문 상태 변경(CANCLE)
             orderService.updateOrderStatus(criteria.getOrderId(), OrderStatus.CANCELED);
 

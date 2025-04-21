@@ -28,7 +28,7 @@ public class OrderFacade {
         // 2. 재고 차감
         stockService.deductStock(criteria.toDeductStockCommand());
 
-        // 5. 상품 총금액
+        // 3. 상품 총금액
         long productTotalAmount = productService.calculateTotalPrice(
                 ProductCommand.Products.of(
                         criteria.getItems().stream()
@@ -37,10 +37,10 @@ public class OrderFacade {
                 )
         );
 
-        // 6. 주문 생성
+        // 4. 주문 생성
         OrderInfo.CreateOrder orderInfo = orderService.createOrder(criteria.toCreateOrderCommand(productTotalAmount));
 
-        // 7. 결과 반환
+        // 5. 결과 반환
         OrderResult.Order result = OrderResult.Order.of(
                 orderInfo.getOrderId(),
                 orderInfo.getProductTotalPrice(),
