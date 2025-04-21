@@ -1,14 +1,29 @@
 package com.example.demo.infra.payment;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Getter
-@Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class PaymentMockResponse {
-    private String transactionId;
-    private String status;
-    private String message;
+
+    @Getter
+    public static class MockPay {
+
+        private final String transactionId;
+        private final String status;
+        private final String message;
+
+        private MockPay(String transactionId, String status, String message) {
+            this.transactionId = transactionId;
+            this.status = status;
+            this.message = message;
+        }
+
+        public static MockPay of(String transactionId, String status, String message) {
+            return new MockPay(transactionId, status, message);
+        }
+    }
+
+
 }

@@ -12,20 +12,18 @@ public class OrderCommand {
     @Getter
     public static class CreateOrder {
         private final long userId;
-        private final double discountRate;
         private final long productTotalAmount;
         private final List<OrderProduct> orderProducts;
 
-        private CreateOrder(long userId, double discountRate, long productTotalAmount, List<OrderProduct> orderProducts) {
+        private CreateOrder(long userId, long productTotalAmount, List<OrderProduct> orderProducts) {
             this.userId = userId;
-            this.discountRate = discountRate;
             this.productTotalAmount = productTotalAmount;
             this.orderProducts = orderProducts;
         }
 
 
-        public static CreateOrder of(long userId,double discountRate, long productTotalAmount, List<OrderProduct> orderProducts) {
-            return new CreateOrder(userId,discountRate, productTotalAmount,orderProducts);
+        public static CreateOrder of(long userId,long productTotalAmount, List<OrderProduct> orderProducts) {
+            return new CreateOrder(userId,productTotalAmount,orderProducts);
         }
 
     }

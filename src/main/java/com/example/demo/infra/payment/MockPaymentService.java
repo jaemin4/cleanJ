@@ -14,7 +14,7 @@ public class MockPaymentService {
 
     private static final String MOCK_API_URL = "https://67ed717f4387d9117bbda6b1.mockapi.io/api/pay/test";
 
-    public PaymentMockResponse callAndValidateMockApi(PaymentMockRequest.Mock request) {
+    public PaymentMockResponse.MockPay callAndValidateMockApi(PaymentMockRequest.Mock request) {
         try {
             Long orderId = request.getOrderId();
             Long userId = request.getUserId();
@@ -30,14 +30,12 @@ public class MockPaymentService {
                     String.class
             );
 
-            // 고정 응답 생성
-            PaymentMockResponse fixedResponse = new PaymentMockResponse();
-            fixedResponse.setTransactionId("fixed-transaction-id");
-            fixedResponse.setStatus("200");
-            fixedResponse.setMessage("결제 성공 (Mock 고정 응답)");
-
             log.info("고정 결제 성공 응답 반환");
-            return fixedResponse;
+            return PaymentMockResponse.MockPay.of(
+                    "fixed-transaction-id",
+                    "200",
+                    "결제 성공 (Mock 고정 응답)"
+            );
 
         } catch (Exception e) {
             log.error("Mock 결제 API 호출 중 예외 발생", e);

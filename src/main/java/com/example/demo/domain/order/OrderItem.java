@@ -25,9 +25,9 @@ public class OrderItem {
     private Long productId;
 
     @Column(nullable = false)
-    private int quantity;
+    private Long quantity;
 
-    private OrderItem(Long productId, int quantity) {
+    private OrderItem(Long productId, Long quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("상품 수량은 1 이상이어야 합니다.");
         }
@@ -38,7 +38,7 @@ public class OrderItem {
     /**
      * Factory method for creating an OrderItem
      */
-    public static OrderItem of(Long productId, int quantity) {
+    public static OrderItem of(Long productId, Long quantity) {
         return new OrderItem(productId, quantity);
     }
 

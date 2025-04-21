@@ -26,24 +26,15 @@ public class Order {
     @Column(name = "product_total_price", nullable = false)
     private long productTotalPrice;
 
-    @Column(name = "discount_price", nullable = false)
-    private double discountPrice;
-
-    @Column(name = "final_total_price", nullable = false)
-    private double finalTotalPrice;
-
-    private Order(Long userId, OrderStatus orderStatus, long productTotalPrice, double discountPrice, double finalTotalPrice) {
+    private Order(Long userId, OrderStatus orderStatus, long productTotalPrice) {
         this.userId = userId;
         this.orderStatus = orderStatus;
         this.productTotalPrice = productTotalPrice;
-        this.discountPrice = discountPrice;
-        this.finalTotalPrice = finalTotalPrice;
     }
 
     public void updateStatus(OrderStatus orderStatus) {
         this.orderStatus = orderStatus;
     }
-
 
     public static Order create(Long userId, double discountRate, long productTotalPrice) {
         if (userId == null || userId <= 0) {
@@ -57,9 +48,7 @@ public class Order {
         }
 
         OrderStatus status = OrderStatus.CREATED;
-        final double discountPrice = 0.01 * discountRate * productTotalPrice;
-        final double finalTotalPrice = productTotalPrice - discountPrice;
-        return new Order(userId, status, productTotalPrice, discountPrice, finalTotalPrice);
+        return new Order(userId, status, productTotalPrice);
     }
 
 }

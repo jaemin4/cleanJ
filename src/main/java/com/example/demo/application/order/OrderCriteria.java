@@ -1,6 +1,5 @@
 package com.example.demo.application.order;
 
-import com.example.demo.domain.coupon.CouponCommand;
 import com.example.demo.domain.order.OrderCommand;
 import com.example.demo.domain.product.ProductCommand;
 import com.example.demo.domain.stock.StockCommand;
@@ -25,7 +24,7 @@ public class OrderCriteria {
             this.items = items;
         }
 
-        public StockCommand.deductStock toDeductStockCommand() {
+        public StockCommand.DeductStock toDeductStockCommand() {
             List<StockCommand.OrderProduct> stockProducts =
                     items.stream()
                             .map(i -> StockCommand.OrderProduct.of(
@@ -33,11 +32,7 @@ public class OrderCriteria {
                                     i.getQuantity()
                             ))
                             .toList();
-            return StockCommand.deductStock.of(stockProducts);
-        }
-
-        public CouponCommand.Use toCouponUseCommand() {
-            return CouponCommand.Use.of( userId,couponId);
+            return StockCommand.DeductStock.of(stockProducts);
         }
 
         public ProductCommand.Products toProductsCommand() {
@@ -48,15 +43,11 @@ public class OrderCriteria {
             return ProductCommand.Products.of(productIds);
         }
 
-        public CouponCommand.GetDiscountRate toGetDiscountRateCommand() {
-            return CouponCommand.GetDiscountRate.of(couponId);
-        }
-
         public static Order of(Long userId, Long couponId, List<OrderProduct> items) {
             return new Order(userId, couponId,items);
         }
 
-        public OrderCommand.CreateOrder toCreateOrderCommand(double discountRate, long productTotalAmount) {
+        public OrderCommand.CreateOrder toCreateOrderCommand(long productTotalAmount) {
             List<OrderCommand.OrderProduct> products =
                     items.stream()
                             .map(i -> OrderCommand.OrderProduct.of(
@@ -65,7 +56,7 @@ public class OrderCriteria {
                             ))
                             .toList();
 
-            return OrderCommand.CreateOrder.of(userId,discountRate,productTotalAmount,products);
+            return OrderCommand.CreateOrder.of(userId,productTotalAmount,products);
         }
     }
 

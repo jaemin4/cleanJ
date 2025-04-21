@@ -1,9 +1,7 @@
 package com.example.demo.application.payment;
 
-import com.example.demo.domain.balance.BalanceService;
-import com.example.demo.domain.order.Order;
+import com.example.demo.domain.order.OrderInfo;
 import com.example.demo.domain.order.OrderService;
-import com.example.demo.domain.payment.PaymentHistoryService;
 import com.example.demo.infra.payment.MockPaymentService;
 import com.example.demo.infra.payment.PaymentMockResponse;
 import jakarta.transaction.Transactional;
@@ -18,37 +16,33 @@ import java.math.RoundingMode;
 @RequiredArgsConstructor
 public class PaymentFacade {
 
-    private final PaymentHistoryService paymentHistoryService;
     private final OrderService orderService;
-    private final BalanceService balanceService;
     private final MockPaymentService mockPaymentService;
+    private final PaymentProcessor paymentProcessor;
 
-    @Transactional
     public void pay(PaymentCriteria.Payment criteria) {
-        // 1. 주문 조회
-        Order order = orderService.getOrderById(criteria.getOrderId());
+        // 1. 주문 정보 조회
+        OrderInfo.GetOrder order = orderService.getOrderById(criteria.getOrderId());
 
-        // 2. 결제 API 호출 및 검증
-        PaymentMockResponse mockPaymentResponse = mockPaymentService.callAndValidateMockApi(
-                criteria.toPaymentMockRequest((long) order.getFinalTotalPrice())
-        );
-        String transactionId = mockPaymentResponse.getTransactionId();
-        String status = mockPaymentResponse.getStatus();
-        double finalPrice = order.getFinalTotalPrice();
-        Long amount = BigDecimal.valueOf(finalPrice)
+        // 2. 결제 금액
+        Long finalAmount = BigDecimal.valueOf(order.getProductTotalPrice())
                 .setScale(0, RoundingMode.HALF_UP)
                 .longValue();
 
-        // 3. 잔액 차감
-        balanceService.use(criteria.toBalanceUseCommand(amount));
-
-        // 4. 결제 이력 저장
-        paymentHistoryService.recordPaymentHistory(
-                criteria.toPaymentHistoryCommand(transactionId, status, order.getId())
+        // 3. 트랜잭션 외부: 결제 API 호출
+        PaymentMockResponse.MockPay response = mockPaymentService.callAndValidateMockApi(
+                criteria.toPaymentMockRequest(order.getProductTotalPrice())
         );
 
-        // 5. 주문 결제 처리
-        orderService.completeOrder(criteria.getOrderId());
+        if (!"200".equals(response.getStatus())) {
+            log.error("결제 실패: orderId={}, status={}", criteria.getOrderId(), response.getStatus());
+            throw new RuntimeException("결제 API 실패");
+        }
+
+        // 4. 트랜잭션 내부: 실제 결제 처리
+        paymentProcessor.confirmPayment(
+                criteria.toConfirmPaymentCriteria(finalAmount)
+                ,criteria.toPaymentMockResponse(response.getTransactionId(),response.getStatus(),response.getMessage()));
     }
 
 
