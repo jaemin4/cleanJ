@@ -1,0 +1,33 @@
+server:
+  port: 8083
+  servlet:
+    context-path: /
+    encoding:
+      force-response: true
+
+spring:
+  application:
+    name: demo2
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/jmdb
+    username: root
+    password: 12345
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-test-query: 'select 1'
+      connection-timeout: 10000
+      maximum-pool-size: 5
+      pool-name: jm-admin-pool
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        order_inserts: true
+        order_updates: true
+        show_sql: true
+        id:
+          new_generator_mappings: false
