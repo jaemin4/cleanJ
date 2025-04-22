@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "t_payment_history")
+@Table(name = "t1_payment_history")
 public class PaymentHistory {
 
     @Id
