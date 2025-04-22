@@ -3,6 +3,7 @@ package com.example.demo.domain.balance;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,47 +16,43 @@ public class BalanceService {
 
     @Transactional
     public void charge(BalanceCommand.Charge command) {
-        log.info("[BalanceService] 충전 요청: userId={}, amount={}", command.getUserId(), command.getAmount());
+        try {
+            Balance balance = balanceRepository.findByUserId(command.getUserId())
+                    .map(b -> {
+                        b.charge(command.getAmount());
+                        return balanceRepository.save(b);
+                    })
+                    .orElseGet(() -> {
+                        Balance newBalance = Balance.create(command.getUserId(), command.getAmount());
+                        return balanceRepository.save(newBalance);
+                    });
 
-        Balance balance = balanceRepository.findByUserId(command.getUserId())
-                .map(b -> {
-                    log.info("[BalanceService] 기존 잔액 존재. 기존 금액: {}, 충전 금액: {}", b.getAmount(), command.getAmount());
-                    b.charge(command.getAmount());
-                    return balanceRepository.save(b);
-                })
-                .orElseGet(() -> {
-                    log.info("[BalanceService] 잔액 정보 없음. 새 잔액 객체 생성: userId={}, amount={}", command.getUserId(), command.getAmount());
-                    Balance newBalance = Balance.create(command.getUserId(), command.getAmount());
-                    return balanceRepository.save(newBalance);
-                });
-
-        log.info("[BalanceService] 최종 잔액: userId={}, balanceId={}, amount={}", command.getUserId(), balance.getBalanceId(), balance.getAmount());
-
-        balanceHistoryRepository.save(
-                BalanceHistory.charge(balance.getBalanceId(), command.getAmount())
-        );
-
-        log.info("[BalanceService] 충전 이력 저장 완료: balanceId={}, amount={}", balance.getBalanceId(), command.getAmount());
+            balanceHistoryRepository.save(
+                    BalanceHistory.charge(balance.getBalanceId(), command.getAmount())
+            );
+        }catch(ObjectOptimisticLockingFailureException e) {
+            log.error("충전 중 낙관적 락 충돌 발생: userId={}, amount={}", command.getUserId(), command.getAmount());
+            throw new RuntimeException("잔액 충전 중 다른 요청과 충돌했습니다. 다시 시도해주세요.", e);
+        }
     }
-
-
 
     @Transactional
     public void use(BalanceCommand.Use command) {
-        Balance balance = balanceRepository.findByUserId(command.getUserId())
-                .map(b -> {
-                    b.use(command.getAmount());
-                    return balanceRepository.save(b);
-                })
-                .orElseThrow(() -> new RuntimeException("계좌가 존재하지 않습니다."));
-
-
-        balanceHistoryRepository.save(
-                BalanceHistory.use(balance.getBalanceId(), command.getAmount())
-        );
-
+        try{
+            Balance balance = balanceRepository.findByUserId(command.getUserId())
+                    .map(b -> {
+                        b.use(command.getAmount());
+                        return balanceRepository.save(b);
+                    })
+                    .orElseThrow(() -> new RuntimeException("계좌가 존재하지 않습니다."));
+            balanceHistoryRepository.save(
+                    BalanceHistory.use(balance.getBalanceId(), command.getAmount())
+            );
+        }catch (ObjectOptimisticLockingFailureException e) {
+            log.error("잔액 사용 중 낙관적 락 충돌 발생: userId={}, amount={}", command.getUserId(), command.getAmount());
+            throw new RuntimeException("잔액 사용 중 다른 요청과 충돌했습니다. 다시 시도해주세요.", e);
+        }
     }
-
 
 
 }
