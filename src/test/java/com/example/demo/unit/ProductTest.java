@@ -7,11 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -65,7 +63,7 @@ public class ProductTest {
         List<Long> productIds = List.of(id1, id2);
         when(productRepository.findAllByIdIn(productIds)).thenReturn(List.of(p1, p2));
 
-        ProductCommand.Products command = ProductCommand.Products.of(productIds);
+        ProductCommand.ProductIds command = ProductCommand.ProductIds.of(productIds);
 
         // when
         ProductInfo.Products result = productService.findSellingProductsByIds(command);
@@ -83,7 +81,7 @@ public class ProductTest {
         when(productRepository.findAllByIdIn(ids)).thenReturn(List.of());
 
         // when & then
-        ProductCommand.Products command = ProductCommand.Products.of(ids);
+        ProductCommand.ProductIds command = ProductCommand.ProductIds.of(ids);
         assertThatThrownBy(() -> productService.findSellingProductsByIds(command))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("존재하지 않는 상품");
@@ -101,7 +99,7 @@ public class ProductTest {
         when(productRepository.findAllByIdIn(List.of(1L, 2L))).thenReturn(List.of(p1, p2));
 
         // when & then
-        ProductCommand.Products command = ProductCommand.Products.of(List.of(1L, 2L));
+        ProductCommand.ProductIds command = ProductCommand.ProductIds.of(List.of(1L, 2L));
         assertThatThrownBy(() -> productService.findSellingProductsByIds(command))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("판매 중이지 않은 상품");
@@ -135,39 +133,54 @@ public class ProductTest {
     }
 
     @Test
-    @DisplayName("판매 중인 상품들의 총 가격을 계산한다")
+    @DisplayName("판매 중인 상품들의 총 가격을 계산한다 - 수량 포함")
     void calculateTotalPrice_success() {
+        // given
         Product p1 = Product.create("상품1", 1000L, ProductSellingStatus.SELLING);
         Product p2 = Product.create("상품2", 2000L, ProductSellingStatus.SELLING);
         setId(p1, 1L);
         setId(p2, 2L);
 
-        List<Long> ids = List.of(1L, 2L);
-        ProductCommand.Products command = ProductCommand.Products.of(ids);
+        List<ProductCommand.Products.OrderProduct> orderProducts = List.of(
+                ProductCommand.Products.OrderProduct.of(1L, 2L), // 수량 2 → 2000원
+                ProductCommand.Products.OrderProduct.of(2L, 1L)  // 수량 1 → 2000원
+        );
 
-        when(productRepository.findAllByIdIn(ids)).thenReturn(List.of(p1, p2));
+        ProductCommand.Products command = ProductCommand.Products.of(orderProducts);
 
+        when(productRepository.findAllByIdIn(List.of(1L, 2L))).thenReturn(List.of(p1, p2));
+
+        // when
         long total = productService.calculateTotalPrice(command);
-        assertThat(total).isEqualTo(3000L);
+
+        // then
+        assertThat(total).isEqualTo(4000L);
     }
 
     @Test
     @DisplayName("판매 중이지 않은 상품 포함 시 예외 발생")
     void calculateTotalPrice_fail_not_selling() {
+        // given
         Product p1 = Product.create("상품1", 1000L, ProductSellingStatus.SELLING);
         Product p2 = Product.create("상품2", 2000L, ProductSellingStatus.STOP_SELLING);
         setId(p1, 1L);
         setId(p2, 2L);
 
-        List<Long> ids = List.of(1L, 2L);
-        when(productRepository.findAllByIdIn(ids)).thenReturn(List.of(p1, p2));
+        List<ProductCommand.Products.OrderProduct> orderProducts = List.of(
+                ProductCommand.Products.OrderProduct.of(1L, 2L),
+                ProductCommand.Products.OrderProduct.of(2L, 1L)
+        );
+        ProductCommand.Products command = ProductCommand.Products.of(orderProducts);
 
-        ProductCommand.Products command = ProductCommand.Products.of(ids);
+        when(productRepository.findAllByIdIn(List.of(1L, 2L)))
+                .thenReturn(List.of(p1, p2));
 
+        // when & then
         assertThatThrownBy(() -> productService.calculateTotalPrice(command))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("판매 중이지 않은 상품이 포함되어 있습니다");
     }
+
 
     // 리플렉션으로 private id 세팅
     private void setId(Product product, Long id) {

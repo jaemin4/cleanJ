@@ -32,7 +32,7 @@ public class OrderFacade {
         long productTotalAmount = productService.calculateTotalPrice(
                 ProductCommand.Products.of(
                         criteria.getItems().stream()
-                                .map(OrderCriteria.OrderProduct::getProductId)
+                                .map(item -> ProductCommand.Products.OrderProduct.of(item.getProductId(), item.getQuantity()))
                                 .toList()
                 )
         );

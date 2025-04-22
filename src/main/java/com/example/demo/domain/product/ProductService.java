@@ -13,7 +13,7 @@ public class ProductService {
     /**
      * 전달받은 ID 목록 중, 현재 판매 중인 상품만 필터링하여 반환
      */
-    public ProductInfo.Products findSellingProductsByIds(ProductCommand.Products command) {
+    public ProductInfo.Products findSellingProductsByIds(ProductCommand.ProductIds command) {
         List<Product> products = productRepository.findAllByIdIn(command.getProductIds());
 
         // 1. 조회된 상품이 없거나 개수가 일치하지 않으면 → 예외
@@ -47,20 +47,33 @@ public class ProductService {
     }
 
     public long calculateTotalPrice(ProductCommand.Products command) {
-        List<Product> products = productRepository.findAllByIdIn(command.getProductIds());
+        List<Long> productIds = command.getProducts().stream()
+                .map(ProductCommand.Products.OrderProduct::getProductId)
+                .toList();
+
+        List<Product> products = productRepository.findAllByIdIn(productIds);
+
+        if (products.size() != productIds.size()) {
+            throw new IllegalArgumentException("존재하지 않는 상품이 포함되어 있습니다.");
+        }
+
         List<Long> invalidIds = products.stream()
                 .filter(p -> p.getSellStatus() != ProductSellingStatus.SELLING)
                 .map(Product::getId)
                 .toList();
 
         if (!invalidIds.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "판매 중이지 않은 상품이 포함되어 있습니다. 상품 ID: " + invalidIds
-            );
+            throw new IllegalArgumentException("판매 중이지 않은 상품이 포함되어 있습니다. 상품 ID: " + invalidIds);
         }
 
-        return products.stream()
-                .mapToLong(Product::getPrice)
+        return command.getProducts().stream()
+                .mapToLong(orderProduct -> {
+                    Product product = products.stream()
+                            .filter(p -> p.getId().equals(orderProduct.getProductId()))
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("상품 정보 누락: " + orderProduct.getProductId()));
+                    return product.getPrice() * orderProduct.getQuantity();
+                })
                 .sum();
     }
 
