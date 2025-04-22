@@ -21,17 +21,15 @@ public class PaymentCriteria {
         private final Long orderId;
         private final Long userId;
         private final Long couponId;
-        private final List<OrderProduct> items;
 
-        private Payment(Long orderId, Long userId, Long couponId, List<OrderProduct> items) {
+        private Payment(Long orderId, Long userId, Long couponId) {
             this.orderId = orderId;
             this.userId = userId;
             this.couponId = couponId;
-            this.items = items;
         }
 
-        public static Payment of(Long orderId, Long userId, Long couponId, List<OrderProduct> items) {
-            return new Payment(userId, orderId, couponId, items);
+        public static Payment of(Long orderId, Long userId, Long couponId) {
+            return new Payment(userId, orderId, couponId);
         }
 
         public BalanceCommand.Use toBalanceUseCommand(Long amount){
@@ -62,21 +60,6 @@ public class PaymentCriteria {
             return StockCommand.RecoveryStock.of(products);
         }
 
-    }
-
-    @Getter
-    public static class OrderProduct{
-        private final Long productId;
-        private final Long quantity;
-
-        private OrderProduct(Long productId, Long quantity) {
-            this.productId = productId;
-            this.quantity = quantity;
-        }
-
-        public static PaymentCriteria.OrderProduct of(Long productId, Long quantity) {
-            return new PaymentCriteria.OrderProduct(productId,quantity);
-        }
     }
 
 }
