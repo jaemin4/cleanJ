@@ -31,10 +31,9 @@ public class BalanceTest {
     void setUp(){
         MockitoAnnotations.openMocks(this);
     }
-
-    @DisplayName("새계좌 잔액 충전이 정상적으로 완료된다.")
+    @DisplayName("새로운 계좌에 첫 충전 시 잔액이 정상 저장된다.")
     @Test
-    void charge_1() {
+    void charge_success_1() {
         // given
         Long userId = 1L;
         long chargeAmount = 10_000L;
@@ -52,10 +51,9 @@ public class BalanceTest {
         Balance savedBalance = captor.getValue();
         Assertions.assertThat(savedBalance.getAmount()).isEqualTo(chargeAmount);
     }
-
     @DisplayName("기존 계좌 잔액 충전이 정상적으로 완료된다.")
     @Test
-    void charge_2() {
+    void charge_success_2() {
         // given
         Long userId = 1L;
         long chargeAmount = 10_000L;
@@ -72,10 +70,9 @@ public class BalanceTest {
         verify(balanceRepository).save(existingBalance);
         assertThat(existingBalance.getAmount()).isEqualTo(15_000L);
     }
-
     @DisplayName("새계좌 충전금액이 0 이하일 때 예외가 발생한다.")
     @Test
-    void charge_3() {
+    void charge_exception_1() {
         // given
         Long userId = 2L;
         long chargeAmount = 0;
@@ -88,10 +85,9 @@ public class BalanceTest {
                 .hasMessageContaining("요청 금액이 잘못되었습니다.");
 
     }
-
     @DisplayName("계좌가 없을 때 사용하면 예외가 발생한다.")
     @Test
-    void use_1() {
+    void use_exception_1() {
         // given
         Long userId = 1L;
         long amount = 5_000L;
@@ -104,10 +100,9 @@ public class BalanceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("계좌가 존재하지 않습니다.");
     }
-
     @DisplayName("잔액이 정상적으로 사용된다.")
     @Test
-    void use_2() {
+    void use_success_1() {
         // given
         Long userId = 2L;
         long initialAmount = 10_000L;
@@ -126,10 +121,9 @@ public class BalanceTest {
         assertThat(balance.getAmount()).isEqualTo(7_000L);
         verify(balanceRepository).save(balance);
     }
-
     @DisplayName("잔액이 부족하면 예외가 발생한다.")
     @Test
-    void use_3() {
+    void use_exception_2() {
         // given
         Long userId = 3L;
         long initialAmount = 2_000L;
@@ -145,10 +139,9 @@ public class BalanceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("잔액이 부족합니다.");
     }
-
     @DisplayName("잔액 사용 시 이력이 정상적으로 저장된다.")
     @Test
-    void history_1() {
+    void history_success_1() {
         // given
         Long userId = 2L;
         long initialAmount = 10_000L;
@@ -173,10 +166,9 @@ public class BalanceTest {
         assertThat(history.getAmount()).isEqualTo(useAmount);
         assertThat(history.getBalanceId()).isEqualTo(balance.getBalanceId());
     }
-
     @DisplayName("잔액 충전 시 이력이 정상적으로 저장된다.")
     @Test
-    void history_2() {
+    void history_success_2() {
         // given
         Long userId = 10L;
         long chargeAmount = 20_000L;
@@ -198,5 +190,4 @@ public class BalanceTest {
         assertThat(savedHistory.getAmount()).isEqualTo(chargeAmount);
         assertThat(savedHistory.getBalanceId()).isEqualTo(99L);
     }
-
 }
