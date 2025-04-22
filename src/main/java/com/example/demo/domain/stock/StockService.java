@@ -13,7 +13,9 @@ public class StockService {
     @Transactional
     public void deductStock(StockCommand.DeductStock command) {
         command.getProducts().forEach(product -> {
-            Stock stock = findStockOrThrow(product.getProductId());
+            Stock stock = stockRepository.findWithPessimisticLock(product.getProductId()).orElseThrow(
+                    () -> new IllegalStateException("Stock does not exist")
+            );
             stock.deduct(product.getQuantity().intValue());
             stockRepository.save(stock);
         });
