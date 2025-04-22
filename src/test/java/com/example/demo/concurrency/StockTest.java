@@ -1,8 +1,11 @@
 package com.example.demo.concurrency;
 
+import com.example.demo.domain.product.Product;
+import com.example.demo.domain.product.ProductSellingStatus;
 import com.example.demo.domain.stock.Stock;
 import com.example.demo.domain.stock.StockCommand;
 import com.example.demo.domain.stock.StockService;
+import com.example.demo.infra.product.ProductJpaRepository;
 import com.example.demo.infra.stock.StockJpaRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,39 +26,22 @@ public class StockTest {
     @Autowired
     private StockJpaRepository stockJpaRepository;
 
-    @DisplayName("재고 감소 정상 작동 테스트")
+    @Autowired
+    private ProductJpaRepository productJpaRepository;
+
+    @DisplayName("재고 감소 동시성 제어 성공")
     @Test
-    public void 재고감소_테스트() {
-        // given
-        Long productId = 1L;
-        int initialQuantity = 100;
-        long deductQuantity = 10;
+    public void 재고_동시_감소_성공_테스트() throws InterruptedException {
+        // given: 테스트용 상품과 재고 등록
+        Product product = Product.create("TestProduct", 10000, ProductSellingStatus.SELLING);
 
-        // 재고 등록
-        Stock stock = Stock.create(productId, initialQuantity);
-        stockJpaRepository.save(stock);
+        productJpaRepository.save(product);
 
-        // when
-        StockCommand.DeductStock command = StockCommand.DeductStock.of(
-                List.of(StockCommand.OrderProduct.of(productId, deductQuantity))
-        );
-        stockService.deductStock(command);
-
-        // then
-        Stock updated = stockJpaRepository.findByProductId(productId).get();
-        assertThat(updated.getQuantity()).isEqualTo(initialQuantity - deductQuantity);
-    }
-
-    @DisplayName("재고 감소 동시성 문제 재현")
-    @Test
-    public void 재고_동시_감소_테스트() throws InterruptedException {
-        // given
-        Long productId = 55L;
+        Long productId = product.getId(); // 실제 DB에 저장된 ID
         int initialQuantity = 100;
         Long deductQuantity = 1L;
         int threadCount = 100;
 
-        // 초기 재고 설정
         Stock stock = Stock.create(productId, initialQuantity);
         stockJpaRepository.save(stock);
 
@@ -81,11 +67,9 @@ public class StockTest {
         latch.await();
 
         // then
-        Stock updated = stockJpaRepository.findByProductId(productId).get();
+        Stock updated = stockJpaRepository.findByProductId(productId).orElseThrow();
         System.out.println("남은 수량: " + updated.getQuantity());
-
-        // 동시성 문제 발생 시 0이 아닐 수 있음 (원래는 0이 되어야 정상)
-        assertThat(updated.getQuantity()).isNotEqualTo(0);
+        assertThat(updated.getQuantity()).isEqualTo(0);
     }
 
 
