@@ -1,9 +1,10 @@
 package com.example.demo.domain.coupon;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
@@ -15,22 +16,29 @@ public class CouponService {
 
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
-    private final Map<Long, Lock> couponLocks = new ConcurrentHashMap<>();
 
+    @Transactional
     public void issue(CouponCommand.Issue command) {
-       final long couponId = command.getCouponId();
-       final long userId = command.getUserId();
+        final long couponId = command.getCouponId();
+        final long userId = command.getUserId();
 
-       duplicatedCoupon(couponId,userId);
+        // 1. 비관적 락으로 쿠폰 조회
+        Coupon coupon = couponRepository.findByCouponIdForLock(couponId)
+                .orElseThrow(() -> new RuntimeException("coupon could not be found"));
 
-       Coupon coupon = validCoupon(couponId);
-       coupon.use();
-       couponRepository.save(coupon);
+        // 2. 쿠폰 수량 차감
+        coupon.use();
+        couponRepository.save(coupon);
 
-       UserCoupon userCoupon = UserCoupon.issue(couponId,userId);
-       userCouponRepository.save(userCoupon);
+        // 3. UserCoupon 저장 (중복되면 DB 유니크 제약에 의해 예외 발생)
+        try {
+            userCouponRepository.save(UserCoupon.issue(couponId, userId));
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalStateException("중복 발급이 불가능합니다. couponId=" + couponId);
+        }
     }
 
+    @Transactional
     public void use(CouponCommand.Use command) {
         final long userId = command.getUserId();
         final long userCouponId = command.getUserCouponId();
@@ -62,11 +70,6 @@ public class CouponService {
         return userCoupon;
     }
 
-    private void duplicatedCoupon(Long couponId, Long userId) {
-        userCouponRepository.findByCouponIdAndUserId(couponId,userId)
-                .ifPresent(coupon -> {
-                    throw new IllegalStateException("중복 발급이 불가능합니다. couponId=" + couponId);
-                });
-    }
+
 
 }
