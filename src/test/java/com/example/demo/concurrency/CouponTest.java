@@ -22,47 +22,44 @@ public class CouponTest {
     private UserCouponRepository userCouponRepository;
 
     @Test
-    public void 쿠폰_100명_발급_테스트_동시성_실패_확인() throws InterruptedException {
-        // todo 초기 쿠폰 등록 (100개 수량)
+    public void 쿠폰_200명_발급_테스트_동시성_성공_확인() throws InterruptedException {
+        // 1. 초기 쿠폰 등록 (수량 100)
         Coupon coupon = Coupon.create("테스트 쿠폰", 100, 100L);
         Coupon saved = couponRepository.save(coupon);
         Long couponId = saved.getId();
+        System.out.println("[Init] 쿠폰 수량 = " + coupon.getQuantity());
 
-        // todo  유저 수 100명 및 스레드 15개 설정
-        int userCount = 100;
-        int threadPerUser = 5;
-        int totalThread = userCount * threadPerUser;
-
-        ExecutorService executorService = Executors.newFixedThreadPool(50);
-        CountDownLatch latch = new CountDownLatch(totalThread);
+        // 2. 유저 수 200명 / 각 유저당 1번 요청 / 총 200개 요청
+        int userCount = 200;
+        ExecutorService executorService = Executors.newFixedThreadPool(10);
+        CountDownLatch latch = new CountDownLatch(userCount);
 
         for (long userId = 1; userId <= userCount; userId++) {
             final long finalUserId = userId;
-            for (int i = 0; i < threadPerUser; i++) {
-                executorService.execute(() -> {
-                    try {
-                        couponService.issue(CouponCommand.Issue.of(finalUserId,couponId));
-                    } catch (Exception e) {
-                        System.out.println("Exception: " + e.getMessage());
-                    } finally {
-                        latch.countDown();
-                    }
-                });
-            }
+            executorService.execute(() -> {
+                try {
+                    couponService.issue(CouponCommand.Issue.of(finalUserId, couponId));
+                    System.out.println("[SUCCESS] userId=" + finalUserId);
+                } catch (Exception e) {
+                    System.out.println("[FAIL] userId=" + finalUserId + " => " + e.getMessage());
+                } finally {
+                    latch.countDown();
+                }
+            });
         }
 
         latch.await();
 
-        // todo 동시성 문제가 있을 경우 quantity가 0이 아닐 수 있음
-        Long quantity = couponRepository.findById(couponId).get().getQuantity();
+        // 3. 결과 확인
+        long remaining = couponRepository.findById(couponId).get().getQuantity();
+        long issuedCount = userCouponRepository.count();
 
-        // todo quantity == 0 이라고 가정하면 실패해야 함 (즉 실제로는 실패하게 만들어야 성공)
-        boolean failedAsExpected = quantity != 0;
+        System.out.println("[Result] 남은 수량: " + remaining);
+        System.out.println("[Result] 발급된 유저 수: " + issuedCount);
 
-        // todo  // 기대: 동시성 실패 → 수량이 0이 아님 → 테스트 성공
-        System.out.println("남은 수량: " + quantity);
-        assertThat(failedAsExpected).isTrue();
+        assertThat(issuedCount).isEqualTo(100L);
     }
+
 
 
 
