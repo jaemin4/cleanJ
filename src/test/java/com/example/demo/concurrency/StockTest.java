@@ -42,7 +42,7 @@ public class StockTest {
         stockService.deductStock(command);
 
         // then
-        Stock updated = stockJpaRepository.findByProductId(productId);
+        Stock updated = stockJpaRepository.findByProductId(productId).get();
         assertThat(updated.getQuantity()).isEqualTo(initialQuantity - deductQuantity);
     }
 
@@ -81,7 +81,7 @@ public class StockTest {
         latch.await();
 
         // then
-        Stock updated = stockJpaRepository.findByProductId(productId);
+        Stock updated = stockJpaRepository.findByProductId(productId).get();
         System.out.println("남은 수량: " + updated.getQuantity());
 
         // 동시성 문제 발생 시 0이 아닐 수 있음 (원래는 0이 되어야 정상)
