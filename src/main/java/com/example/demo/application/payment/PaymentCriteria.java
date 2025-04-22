@@ -1,38 +1,28 @@
 package com.example.demo.application.payment;
 
-import com.example.demo.application.order.OrderCriteria;
-import com.example.demo.domain.balance.BalanceCommand;
-import com.example.demo.domain.coupon.CouponCommand;
-import com.example.demo.domain.payment.PaymentHistoryCommand;
-import com.example.demo.domain.stock.StockCommand;
 import com.example.demo.infra.payment.PaymentMockRequest;
-import com.example.demo.infra.payment.PaymentMockResponse;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
 import java.util.List;
-import java.util.stream.Collectors;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class PaymentCriteria {
 
     @Getter
-    public static class Payment {
+    public static class pay {
         private final Long orderId;
         private final Long userId;
         private final Long couponId;
-        private final List<OrderProduct> items;
 
-        private Payment(Long orderId, Long userId, Long couponId, List<OrderProduct> items) {
+        private pay(Long orderId, Long userId, Long couponId) {
             this.orderId = orderId;
             this.userId = userId;
             this.couponId = couponId;
-            this.items = items;
         }
 
-        public static Payment of(Long orderId, Long userId, Long couponId, List<OrderProduct> items) {
-            return new Payment(userId, orderId, couponId, items);
+        public static pay of(Long orderId, Long userId, Long couponId) {
+            return new pay(userId, orderId, couponId);
         }
 
         public PaymentMockRequest.Mock toPaymentMockRequest(Long finalAmount) {
@@ -43,35 +33,18 @@ public class PaymentCriteria {
             return PaymentProcessorCriteria.PayMockResponse.of(transactionId,status,message);
         }
 
-        public PaymentProcessorCriteria.ConfirmPayment toConfirmPaymentCriteria(Long finalAmount) {
+        public PaymentProcessorCriteria.ConfirmPayment toConfirmPaymentCriteria(Long finalAmount, List<PaymentProcessorCriteria.OrderProduct> items) {
             return PaymentProcessorCriteria.ConfirmPayment.of(
                     orderId,
                     userId,
                     couponId,
-                    items.stream()
-                            .map(item -> PaymentProcessorCriteria.OrderProduct.of(item.getProductId(),item.getQuantity()))
-                            .toList(),
+                    items,
                     finalAmount
             );
         }
     }
 
 
-    @Getter
-    public static class OrderProduct{
-        private final Long productId;
-        private final Long quantity;
-
-        private OrderProduct(Long productId, Long quantity) {
-            this.productId = productId;
-            this.quantity = quantity;
-        }
-
-        public static PaymentCriteria.OrderProduct of(Long productId, Long quantity) {
-            return new PaymentCriteria.OrderProduct(productId,quantity);
-        }
-
-    }
 
 
 }

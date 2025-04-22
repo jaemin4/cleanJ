@@ -19,7 +19,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest
-public class PaymentTest {
+public class payTest {
 
     @Autowired
     private PaymentFacade paymentFacade;
@@ -84,10 +84,10 @@ public class PaymentTest {
         balanceService.charge(BalanceCommand.Charge.of(userId, 20_000L));
 
         // 3. 결제 요청 생성
-        PaymentCriteria.Payment payment = PaymentCriteria.Payment.of(userId, createdOrder.getOrderId());
+        PaymentCriteria.pay pay = PaymentCriteria.pay.of(userId, createdOrder.getOrderId());
 
         // when
-        paymentFacade.pay(payment);
+        paymentFacade.pay(pay);
 
         // then - 결제 이력 존재
         boolean exists = paymentHistoryRepository.existsByOrderId(createdOrder.getOrderId());
