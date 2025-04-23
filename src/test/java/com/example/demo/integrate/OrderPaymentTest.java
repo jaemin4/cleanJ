@@ -26,39 +26,32 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-
 import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-@Import(TestConfig.class)
 @SpringBootTest
 @Transactional
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 public class OrderPaymentTest {
 
-    @Autowired
-    private OrderFacade orderFacade;
+    @Autowired private OrderFacade orderFacade;
     @Autowired private ProductRepository productRepository;
     @Autowired private StockJpaRepository stockRepository;
     @Autowired private PaymentFacade paymentFacade;
     @Autowired private OrderRepository orderRepository;
     @Autowired private BalanceRepository balanceRepository;
     @Autowired private PaymentHistoryRepository paymentHistoryRepository;
-    @Autowired
-    private CouponService couponService;
+    @Autowired private CouponService couponService;
+    @Autowired private CouponRepository couponRepository;
+    @Autowired private BalanceService balanceService;
 
     private Long userId = 100L;
     private Long productId1;
     private Long productId2;
     @Autowired
-    private CouponRepository couponRepository;
-    @Autowired
     private UserCouponRepository userCouponRepository;
-    @Autowired
-    private BalanceService balanceService;
+
 
     @BeforeEach
     void setUp() {
@@ -84,7 +77,7 @@ public class OrderPaymentTest {
                 OrderCriteria.OrderProduct.of(productId1, 2L),  // 6000
                 OrderCriteria.OrderProduct.of(productId2, 3L)   // 4500
         );
-        OrderCriteria.Order criteria = OrderCriteria.Order.of(userId, null, items);
+        OrderCriteria.Order criteria = OrderCriteria.Order.of(userId, items);
 
         // when
         OrderResult.Order result = orderFacade.order(criteria);
@@ -104,19 +97,20 @@ public class OrderPaymentTest {
                 OrderCriteria.OrderProduct.of(productId1, 2L),
                 OrderCriteria.OrderProduct.of(productId2, 3L)
         );
-        OrderCriteria.Order criteria = OrderCriteria.Order.of(userId, null, items);
+        OrderCriteria.Order criteria = OrderCriteria.Order.of(userId, items);
         Coupon savedCoupon = couponRepository.save(Coupon.create("test",10,10L));
         couponService.issue(CouponCommand.Issue.of(userId, savedCoupon.getId()));
+        long userCouponId = userCouponRepository.findByCouponId(savedCoupon.getId()).get().getId();
         balanceService.charge(BalanceCommand.Charge.of(userId,50000L));
         OrderResult.Order result = orderFacade.order(criteria);
         PaymentCriteria.Payment criteriaPay = PaymentCriteria.Payment.of(
                 result.getOrderId()
                 ,userId
-                ,1L
+                ,userCouponId
         );
 
         // when
-        // 8. TODO 결제 진행
+        // TODO 결제 진행
         paymentFacade.pay(criteriaPay);
 
         // then
@@ -136,7 +130,7 @@ public class OrderPaymentTest {
                 OrderCriteria.OrderProduct.of(productId1, 2L),
                 OrderCriteria.OrderProduct.of(productId2, 3L)
         );
-        OrderResult.Order result = orderFacade.order(OrderCriteria.Order.of(userId, null, items));
+        OrderResult.Order result = orderFacade.order(OrderCriteria.Order.of(userId, items));
         Long invalidCouponId = 9999L;
         PaymentCriteria.Payment payCriteria = PaymentCriteria.Payment.of(
                 result.getOrderId(), userId, invalidCouponId

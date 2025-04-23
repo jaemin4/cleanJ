@@ -1,6 +1,7 @@
 package com.example.demo.concurrency;
 
 import com.example.demo.domain.coupon.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,7 +11,7 @@ import java.util.concurrent.Executors;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 @SpringBootTest
-public class CouponTest {
+public class CouponTestTest {
 
     @Autowired
     private CouponService couponService;
@@ -20,6 +21,7 @@ public class CouponTest {
 
     @Autowired
     private UserCouponRepository userCouponRepository;
+
 
     @Test
     public void 쿠폰_200명_발급_테스트_동시성_성공_확인() throws InterruptedException {

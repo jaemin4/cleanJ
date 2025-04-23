@@ -76,7 +76,7 @@ public class HistoryRecordFailTest {
                 OrderCriteria.OrderProduct.of(productId1, 2L),
                 OrderCriteria.OrderProduct.of(productId2, 3L)
         );
-        OrderResult.Order result = orderFacade.order(OrderCriteria.Order.of(userId, null, items));
+        OrderResult.Order result = orderFacade.order(OrderCriteria.Order.of(userId, items));
         Coupon savedCoupon = couponRepository.save(Coupon.create("test", 10, 10L));
         couponService.issue(CouponCommand.Issue.of(userId, savedCoupon.getId()));
         balanceService.charge(BalanceCommand.Charge.of(userId, 50000L));
