@@ -1,5 +1,6 @@
-package com.example.demo.support;
+package com.example.demo.support.exception;
 
+import com.example.demo.support.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
@@ -45,6 +46,15 @@ public class GlobalExceptionHandler {
         return ApiResponse.fail(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "예기치 못한 오류가 발생했습니다."
+        );
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS) // 429
+    public ApiResponse<Object> handleTooManyRequests(TooManyRequestsException e) {
+        return ApiResponse.fail(
+                HttpStatus.TOO_MANY_REQUESTS.value(),
+                e.getMessage()
         );
     }
 
