@@ -29,7 +29,7 @@ public class PaymentCriteria {
         }
 
         public static Payment of(Long orderId, Long userId, Long couponId) {
-            return new Payment(userId, orderId, couponId);
+            return new Payment(orderId,userId,couponId);
         }
 
         public BalanceCommand.Use toBalanceUseCommand(Long amount){

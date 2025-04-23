@@ -57,6 +57,11 @@ public class PaymentFacade {
                     criteria.toPaymentMockRequest(order.getProductTotalPrice())
             );
 
+            if (!"200".equals(mockPaymentResponse.getStatus())) {
+                log.error("결제 실패: orderId={}, status={}", criteria.getOrderId(), mockPaymentResponse.getStatus());
+                throw new RuntimeException("결제 API 실패");
+            }
+
             // 6. 결제 이력 저장 (실패해도 롤백 X)
             try {
                 paymentHistoryService.recordPaymentHistory(
@@ -66,12 +71,12 @@ public class PaymentFacade {
                                 criteria.getOrderId())
                 );
             } catch (Exception e) {
-                log.error("❗결제 이력 저장 실패: orderId={}, txId={}, error={}",
+                log.error("결제 이력 저장 실패: orderId={}, txId={}, error={}",
                         criteria.getOrderId(), mockPaymentResponse.getTransactionId(), e.getMessage());
             }
 
         } catch (Exception e) {
-            log.warn("⚠️ 결제 실패, 주문 상태 취소 및 재고 복구: orderId={}", criteria.getOrderId());
+            log.warn("결제 실패, 주문 상태 취소 및 재고 복구: orderId={}", criteria.getOrderId());
             // 7-1. 주문 취소 처리
             orderService.updateOrderStatus(criteria.getOrderId(), OrderStatus.CANCELED);
 
