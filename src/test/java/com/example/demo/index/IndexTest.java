@@ -2,7 +2,6 @@ package com.example.demo.index;
 
 import com.example.demo.domain.payment.PaymentHistory;
 import com.example.demo.infra.payment.PaymentJdbcRepository;
-import com.example.demo.infra.payment.TopOrderResult;
 import jakarta.transaction.Transactional;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
