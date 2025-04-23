@@ -27,13 +27,13 @@ public class CouponCommand {
         private final Long userId;
         private final Long userCouponId;
 
-         private Use(Long userCouponId, Long userId) {
-             this.userCouponId = userCouponId;
+         private Use(Long userId,Long userCouponId) {
              this.userId = userId;
+             this.userCouponId = userCouponId;
          }
 
-         public static Use of(Long userCouponId, Long userId) {
-             return new Use(userCouponId, userId);
+         public static Use of(Long userId,Long userCouponId) {
+             return new Use(userId, userCouponId);
          }
      }
 

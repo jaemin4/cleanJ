@@ -61,6 +61,7 @@ public class CouponService {
     }
 
     private UserCoupon validUserCoupon(Long userId, Long userCouponId) {
+        log.info("userId : {}, userCouponId : {}", userId, userCouponId);
         UserCoupon userCoupon = userCouponRepository.findByCouponId(userCouponId)
                 .orElseThrow(() -> new RuntimeException("쿠폰을 찾을 수 없습니다."));
 
