@@ -2,6 +2,7 @@ package com.example.demo.interfaces.order;
 
 import com.example.demo.application.order.OrderFacade;
 import com.example.demo.support.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,7 +17,7 @@ public class OrderController {
     private final OrderFacade orderFacade;
 
     @PostMapping
-    public ApiResponse<Void> createOrder(@RequestBody OrderRequest.Order request) {
+    public ApiResponse<Void> createOrder(@Valid @RequestBody OrderRequest.Order request) {
         orderFacade.order(request.toCriteria());
         return ApiResponse.success();
     }

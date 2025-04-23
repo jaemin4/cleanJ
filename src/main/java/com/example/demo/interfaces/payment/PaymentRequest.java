@@ -25,7 +25,8 @@ public class PaymentRequest {
         private Long couponId;
 
         public PaymentCriteria.Payment toCriteria() {
-            return PaymentCriteria.Payment.of(userId, orderId,couponId);
+            return PaymentCriteria.Payment.of(orderId,userId,couponId);
+
         }
     }
 
