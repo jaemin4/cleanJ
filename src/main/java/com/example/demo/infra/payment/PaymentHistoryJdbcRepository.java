@@ -4,7 +4,6 @@ import com.example.demo.domain.payment.PaymentHistory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
@@ -14,12 +13,12 @@ import java.util.Map;
 
 @Repository
 @RequiredArgsConstructor
-public class PaymentJdbcRepository {
+public class PaymentHistoryJdbcRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
     public void saveAll(List<PaymentHistory> paymentHistories) {
-        String sql = "INSERT INTO t_payment_history (user_id, amount, order_id, transaction_id, status) " +
+        String sql = "INSERT INTO t1_payment_history (user_id, amount, order_id, transaction_id, status) " +
                 "VALUES (?, ?, ?, ?, ?)";
 
         jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
@@ -40,20 +39,25 @@ public class PaymentJdbcRepository {
         });
     }
     public int count() {
-        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM t_payment_history", Integer.class);
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM t1_payment_history", Integer.class);
     }
 
-    public List<Map<String, Object>> findTop5OrdersByPaidStatusIndexed() {
+    public List<ResTopOrderFive> findTop5OrdersByPaidStatus() {
         String sql = """
-        SELECT order_id, COUNT(*) AS cnt
-        FROM t_payment_history
-        WHERE status = 'PAID'
-        GROUP BY order_id
-        ORDER BY cnt DESC
-        LIMIT 5
-    """;
+            SELECT order_id, COUNT(*) AS cnt
+            FROM t1_payment_history
+            WHERE status = 'PAID'
+            GROUP BY order_id
+            ORDER BY cnt DESC
+            LIMIT 5
+        """;
 
-        return jdbcTemplate.queryForList(sql);
+        return jdbcTemplate.query(sql, (rs, rowNum) ->
+                ResTopOrderFive.of(
+                        rs.getLong("order_id"),
+                        rs.getLong("cnt")
+                )
+        );
     }
 
 }
