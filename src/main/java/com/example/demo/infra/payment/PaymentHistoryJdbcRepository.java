@@ -46,7 +46,7 @@ public class PaymentHistoryJdbcRepository {
         String sql = """
             SELECT order_id, COUNT(*) AS cnt
             FROM t1_payment_history
-            WHERE status = 'PAID'
+            WHERE status = 'SUCCESS'
             GROUP BY order_id
             ORDER BY cnt DESC
             LIMIT 5

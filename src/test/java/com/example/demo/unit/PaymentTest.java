@@ -1,18 +1,20 @@
 package com.example.demo.unit;
 
-import com.example.demo.domain.payment.PaymentHistory;
-import com.example.demo.domain.payment.PaymentHistoryCommand;
-import com.example.demo.domain.payment.PaymentHistoryRepository;
-import com.example.demo.domain.payment.PaymentHistoryService;
+import com.example.demo.domain.payment.*;
 import com.example.demo.infra.payment.MockPaymentService;
 import com.example.demo.infra.payment.PaymentMockRequest;
 import com.example.demo.infra.payment.PaymentMockResponse;
+import com.example.demo.infra.payment.ResTopOrderFive;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.Arrays;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -82,4 +84,26 @@ public class PaymentTest {
         assertThat(response.getMessage()).contains("결제 성공");
         verify(restTemplate, times(1)).postForEntity(anyString(), any(), eq(String.class));
     }
+
+    @DisplayName("인기 상품이 정상 조회된다")
+    @Test
+    void getTop5Orders() {
+        List<ResTopOrderFive> mockList = List.of(
+                new ResTopOrderFive(101L, 20L),
+                new ResTopOrderFive(102L, 18L),
+                new ResTopOrderFive(103L, 16L),
+                new ResTopOrderFive(104L, 15L),
+                new ResTopOrderFive(105L, 14L)
+        );
+        when(paymentHistoryRepository.findTop5OrdersByPaidStatus()).thenReturn(mockList);
+
+        // when
+        List<PaymentHistoryInfo.Top5Orders> result = paymentHistoryService.getTop5Orders();
+
+        // then
+        assertThat(result).hasSize(5);
+        assertThat(result.get(0).getOrderId()).isEqualTo(101L);
+        assertThat(result.get(4).getCount()).isEqualTo(14L);
+    }
+
 }

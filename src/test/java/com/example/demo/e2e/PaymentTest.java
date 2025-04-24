@@ -8,6 +8,11 @@ import com.example.demo.domain.balance.BalanceService;
 import com.example.demo.domain.coupon.*;
 import com.example.demo.domain.order.Order;
 import com.example.demo.domain.order.OrderRepository;
+import com.example.demo.domain.order.OrderStatus;
+import com.example.demo.domain.payment.PaymentHistory;
+import com.example.demo.domain.payment.PaymentHistoryInfo;
+import com.example.demo.domain.payment.PaymentHistoryRepository;
+import com.example.demo.domain.payment.PaymentHistoryService;
 import com.example.demo.domain.product.Product;
 import com.example.demo.domain.product.ProductRepository;
 import com.example.demo.domain.product.ProductSellingStatus;
@@ -28,6 +33,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.LongStream;
+
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -45,15 +54,15 @@ public class PaymentTest {
     @Autowired BalanceService balanceService;
     @Autowired CouponService couponService;
     @Autowired CouponRepository couponRepository;
-
-
+    @Autowired PaymentHistoryService paymentHistoryService;
+    @Autowired
+    PaymentHistoryRepository paymentHistoryRepository;
 
     Long productId1;
     Long productId2;
-
-
     Long userId = 1L;
     Long orderId;
+
     @Autowired
     private UserCouponRepository userCouponRepository;
 
@@ -154,6 +163,36 @@ public class PaymentTest {
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").exists());
     }
+
+    @DisplayName("상위 5개의 결제 주문이 정상 조회된다")
+    @Test
+    void getPop_success() throws Exception {
+        LongStream.rangeClosed(1, 10).forEach(orderId -> {
+            long repeat = 11 - orderId;
+            for (int j = 0; j < repeat; j++) {
+                PaymentHistory history = PaymentHistory.create(
+                        orderId,
+                        1000L,
+                        5000L,
+                        "TX-" + orderId + "-" + j,
+                        "SUCCESS"
+                );
+                paymentHistoryRepository.save(history);
+            }
+        });
+
+        // when & then: 가장 많이 결제된 순서대로 5개만 응답으로 와야 함
+        mockMvc.perform(get("/payments/get/pop"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(5))
+                .andExpect(jsonPath("$.data[0].orderId").value(1))
+                .andExpect(jsonPath("$.data[0].count").value(10))
+                .andExpect(jsonPath("$.data[1].orderId").value(2))
+                .andExpect(jsonPath("$.data[1].count").value(9))
+                .andExpect(jsonPath("$.data[4].orderId").value(5))
+                .andExpect(jsonPath("$.data[4].count").value(6));
+    }
+
 
 
 }
