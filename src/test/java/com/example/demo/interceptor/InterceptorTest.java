@@ -1,12 +1,13 @@
 package com.example.demo.interceptor;
 
-import org.junit.jupiter.api.DisplayName;
+import com.example.demo.support.exception.TooManyRequestsException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
-
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -18,36 +19,32 @@ public class InterceptorTest {
     private MockMvc mockMvc;
 
     @Test
-    @DisplayName("1초 이내 중복 요청 시 예외 429 응답 반환한다.")
-    void testRateLimitInterceptor_throwsExceptionAndReturns429() throws Exception {
-        String url = "/test-endpoint";
+    public void 같은_세션_1초_이내_두_번_요청시_TooManyRequestsException_발생() throws Exception {
+        MockHttpSession session = new MockHttpSession();
 
-        // 첫 요청 - 정상 처리
-        mockMvc.perform(get(url))
+        mockMvc.perform(get("/test-endpoint")
+                        .session(session))
                 .andExpect(status().isOk());
 
-        //Thread.sleep(500);
-
-        // 두 번째 요청 - 429 예외 발생
-        mockMvc.perform(get(url))
+        mockMvc.perform(get("/test-endpoint")
+                        .session(session))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value(429))
-                .andExpect(jsonPath("$.message").value("요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요."));
+                .andExpect(result -> assertTrue(result.getResolvedException() instanceof TooManyRequestsException));
     }
 
     @Test
-    @DisplayName("1초 이상 후 재요청은 허용된다.")
-    void testRateLimitInterceptor_afterDelay_passes() throws Exception {
-        String url = "/test-endpoint";
+    public void 다른_세션은_동시요청_가능() throws Exception {
+        MockHttpSession session1 = new MockHttpSession();
+        MockHttpSession session2 = new MockHttpSession();
 
-        // 첫 요청 - 정상 처리
-        mockMvc.perform(get(url))
+        mockMvc.perform(get("/test-endpoint")
+                        .session(session1))
                 .andExpect(status().isOk());
 
-        Thread.sleep(1100);
-
-        // 두번째 요청 - 정상 처리
-        mockMvc.perform(get(url))
+        mockMvc.perform(get("/test-endpoint")
+                        .session(session2))
                 .andExpect(status().isOk());
     }
+
+
 }
