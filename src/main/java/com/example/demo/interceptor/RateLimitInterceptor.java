@@ -19,17 +19,20 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        String sessionId = request.getSession().getId();
         String uri = request.getRequestURI();
-        long now = Instant.now().toEpochMilli();
+        String key = sessionId + ":" + uri;
 
-        Long lastRequestTime = lastRequestTimeMap.get(uri);
+        long now = Instant.now().toEpochMilli();
+        Long lastRequestTime = lastRequestTimeMap.get(key);
 
         if (lastRequestTime != null && now - lastRequestTime < THRESHOLD_MS) {
-            log.warn("너무 빠른 재요청 차단됨! URI: {}", uri);
+            log.warn("너무 빠른 재요청 차단됨! 세션ID={}, URI={}", sessionId, uri);
             throw new TooManyRequestsException("요청이 너무 빠릅니다. 잠시 후 다시 시도해주세요.");
         }
 
-        lastRequestTimeMap.put(uri, now);
+        lastRequestTimeMap.put(key, now);
         return true;
     }
 }
+
