@@ -32,12 +32,11 @@ public class StockTest {
     @DisplayName("재고 감소 동시성 제어 성공")
     @Test
     public void 재고_동시_감소_성공_테스트() throws InterruptedException {
-        // given: 테스트용 상품과 재고 등록
         Product product = Product.create("TestProduct", 10000, ProductSellingStatus.SELLING);
 
         productJpaRepository.save(product);
 
-        Long productId = product.getId(); // 실제 DB에 저장된 ID
+        Long productId = product.getId();
         int initialQuantity = 100;
         Long deductQuantity = 1L;
         int threadCount = 100;

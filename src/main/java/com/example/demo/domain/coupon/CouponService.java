@@ -22,15 +22,12 @@ public class CouponService {
         final long couponId = command.getCouponId();
         final long userId = command.getUserId();
 
-        // 1. 비관적 락으로 쿠폰 조회
         Coupon coupon = couponRepository.findByCouponIdForLock(couponId)
                 .orElseThrow(() -> new RuntimeException("coupon could not be found"));
 
-        // 2. 쿠폰 수량 차감
         coupon.use();
         couponRepository.save(coupon);
 
-        // 3. UserCoupon 저장 (중복되면 DB 유니크 제약에 의해 예외 발생)
         try {
             userCouponRepository.save(UserCoupon.issue(couponId, userId));
         } catch (DataIntegrityViolationException e) {

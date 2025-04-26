@@ -32,27 +32,22 @@ public class PaymentFacade {
     @Transactional
     public void pay(PaymentCriteria.Payment criteria) {
         try {
-            // 1. 주문 조회
             OrderInfo.GetOrder order = orderService.getOrderById(criteria.getOrderId());
 
             long finalAmount = BigDecimal.valueOf(order.getProductTotalPrice())
                     .setScale(0, RoundingMode.HALF_UP)
                     .longValue();
 
-            // 2. 쿠폰 사용
             if (criteria.getCouponId() != null) {
                 couponService.use(criteria.toUseCouponCommand());
                 double discountRate = couponService.getDiscountRate(criteria.toGetDiscountRateCommand());
                 finalAmount = (long) (finalAmount - (finalAmount * discountRate * 0.01));
             }
 
-            // 3. 잔액 차감
             balanceService.use(criteria.toBalanceUseCommand(finalAmount));
 
-            // 4. 주문 결제 처리
             orderService.updateOrderStatus(criteria.getOrderId(), OrderStatus.PAID);
 
-            // 5. 결제 API 호출 및 검증
             PaymentMockResponse.MockPay mockPaymentResponse = mockPaymentService.callAndValidateMockApi(
                     criteria.toPaymentMockRequest(order.getProductTotalPrice())
             );
@@ -62,7 +57,6 @@ public class PaymentFacade {
                 throw new RuntimeException("결제 API 실패");
             }
 
-            // 6. 결제 이력 저장 (실패해도 롤백 X)
             try {
                 paymentHistoryService.recordPaymentHistory(
                         criteria.toPaymentHistoryCommand(
@@ -71,16 +65,15 @@ public class PaymentFacade {
                                 criteria.getOrderId())
                 );
             } catch (Exception e) {
+
                 log.error("결제 이력 저장 실패: orderId={}, txId={}, error={}",
                         criteria.getOrderId(), mockPaymentResponse.getTransactionId(), e.getMessage());
             }
 
         } catch (Exception e) {
             log.warn("결제 실패, 주문 상태 취소 및 재고 복구: orderId={}", criteria.getOrderId());
-            // 7-1. 주문 취소 처리
             orderService.updateOrderStatus(criteria.getOrderId(), OrderStatus.CANCELED);
 
-            // 7.2 재고 회복
             OrderInfo.GetOrderItems getOrderItems = orderService.getOrderItemByOrderId(criteria.getOrderId());
             StockCommand.RecoveryStock recoveryStock = criteria.toRecoveryStockCommand(getOrderItems);
             stockService.recoveryStock(recoveryStock);

@@ -54,14 +54,12 @@ public class HistoryRecordFailTest {
 
     @BeforeEach
     void setUp() {
-        // 1. TODO  상품 등록
         Product p1 = Product.create("딸기케이크", 3000L, ProductSellingStatus.SELLING);
         Product p2 = Product.create("마카롱", 1500L, ProductSellingStatus.SELLING);
         productRepository.saveAll(List.of(p1, p2));
         productId1 = p1.getId();
         productId2 = p2.getId();
 
-        // 2. TODO 재고 등록
         stockRepository.saveAll(List.of(
                 new Stock(productId1, 10),
                 new Stock(productId2, 10)
@@ -85,21 +83,17 @@ public class HistoryRecordFailTest {
         );
 
         // when
-        // 예외는 발생 X , 결제내역 저장 강제로 일으키기
         assertDoesNotThrow(() -> {
             paymentFacade.pay(payCriteria);
         });
 
         // then
-        // 주문 상태 PAID
         Order updatedOrder = orderRepository.findById(result.getOrderId()).orElseThrow();
         assertThat(updatedOrder.getOrderStatus()).isEqualTo(OrderStatus.PAID);
 
-        // 잔액도 차감된 상태
         Balance balance = balanceRepository.findByUserId(userId).orElseThrow();
         assertThat(balance.getAmount()).isLessThan(50000L);
 
-        // 결제 이력 저장되지 않음
         assertThat(paymentHistoryRepository.existsByOrderId(result.getOrderId())).isFalse();
     }
 }

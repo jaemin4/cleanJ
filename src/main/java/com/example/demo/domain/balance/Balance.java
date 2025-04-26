@@ -24,7 +24,6 @@ public class Balance {
     @Column(name = "amount", nullable = false)
     private Long amount;
 
-    // 낙관적 락 적용
     @Version
     private Long version;
 

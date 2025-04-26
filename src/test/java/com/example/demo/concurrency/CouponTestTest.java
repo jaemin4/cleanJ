@@ -25,13 +25,11 @@ public class CouponTestTest {
 
     @Test
     public void 쿠폰_200명_발급_테스트_동시성_성공_확인() throws InterruptedException {
-        // 1. 초기 쿠폰 등록 (수량 100)
         Coupon coupon = Coupon.create("테스트 쿠폰", 100, 100L);
         Coupon saved = couponRepository.save(coupon);
         Long couponId = saved.getId();
         System.out.println("[Init] 쿠폰 수량 = " + coupon.getQuantity());
 
-        // 2. 유저 수 200명 / 각 유저당 1번 요청 / 총 200개 요청
         int userCount = 200;
         ExecutorService executorService = Executors.newFixedThreadPool(10);
         CountDownLatch latch = new CountDownLatch(userCount);
@@ -52,7 +50,6 @@ public class CouponTestTest {
 
         latch.await();
 
-        // 3. 결과 확인
         long remaining = couponRepository.findById(couponId).get().getQuantity();
         long issuedCount = userCouponRepository.count();
 

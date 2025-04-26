@@ -82,7 +82,6 @@ public class BalanceTest {
         int threadCount = 3;
         long amountPerUse = 10L;
 
-        // 초기 잔액: 충분히 크게 설정
         Balance initial = Balance.create(USER_ID, 200L);
         balanceRepository.deleteAll();
         balanceRepository.save(initial);

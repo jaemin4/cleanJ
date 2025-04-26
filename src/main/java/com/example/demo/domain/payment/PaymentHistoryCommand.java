@@ -27,4 +27,25 @@ public class PaymentHistoryCommand {
             return new Save(userId, amount, orderId, transactionId, status);
         }
     }
+
+    @Getter
+    public static class ReTryRecord{
+        private final Long userId;
+        private final Long amount;
+        private final Long orderId;
+        private final String transactionId;
+        private final String status;
+
+        private ReTryRecord(Long userId, Long amount, Long orderId, String transactionId, String status) {
+            this.userId = userId;
+            this.amount = amount;
+            this.orderId = orderId;
+            this.transactionId = transactionId;
+            this.status = status;
+        }
+
+        public static ReTryRecord of(Long userId, Long amount, Long orderId, String transactionId, String status) {
+            return new ReTryRecord(userId, amount, orderId, transactionId, status);
+        }
+    }
 }

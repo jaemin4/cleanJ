@@ -29,9 +29,11 @@ public class AccessLogFilter implements Filter {
         ContentCachingResponseWrapper res = new ContentCachingResponseWrapper((HttpServletResponse) response);
         LocalDateTime requestAt = LocalDateTime.now();
 
+
         chain.doFilter(req, res);
 
         LocalDateTime responseAt = LocalDateTime.now();
+
 
         AccessLogRequest accessLog = AccessLogRequest.builder()
                 .method(req.getMethod())
@@ -43,7 +45,7 @@ public class AccessLogFilter implements Filter {
                         .collect(Collectors.toMap(h -> h, req::getHeader))
                         .toString())
                 .userAgent(req.getHeader("User-Agent"))
-                .remoteIp(req.getRemoteAddr())
+                .remoteIp(AccessLogRequest.extractClientIp(req))
                 .status(res.getStatus())
                 .threadName(Thread.currentThread().getName())
                 .requestAt(requestAt)

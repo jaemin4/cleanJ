@@ -1,6 +1,7 @@
 package com.example.demo.domain.order;
 
 import com.example.demo.infra.order.OrderItemRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.weaver.ast.Or;
@@ -15,9 +16,8 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    /**
-     * 주문 생성
-     */
+
+    @Transactional
     public OrderInfo.CreateOrder createOrder(OrderCommand.CreateOrder command) {
         if (command.getOrderProducts() == null || command.getOrderProducts().isEmpty()) {
             throw new RuntimeException("상품이 비어 있습니다");
@@ -45,9 +45,6 @@ public class OrderService {
         return result;
     }
 
-    /**
-     * 주문 단건 조회
-     */
     public OrderInfo.GetOrder getOrderById(Long orderId) {
 
         Order order = orderRepository.findById(orderId)
@@ -69,9 +66,7 @@ public class OrderService {
         );
     }
 
-    /**
-     * 주문 결제 마무리
-     */
+    @Transactional
     public void updateOrderStatus(Long orderId, OrderStatus orderStatus) {
         Order order = orderRepository.findById(orderId).orElseThrow(
                 () -> new RuntimeException("해당 주문이 존재하지 않습니다")

@@ -55,14 +55,12 @@ public class OrderPaymentTest {
 
     @BeforeEach
     void setUp() {
-        // 1. TODO  상품 등록
         Product p1 = Product.create("딸기케이크", 3000L, ProductSellingStatus.SELLING);
         Product p2 = Product.create("마카롱", 1500L, ProductSellingStatus.SELLING);
         productRepository.saveAll(List.of(p1, p2));
         productId1 = p1.getId();
         productId2 = p2.getId();
 
-        // 2. TODO 재고 등록
         stockRepository.saveAll(List.of(
                 new Stock(productId1, 10),
                 new Stock(productId2, 10)
@@ -110,7 +108,6 @@ public class OrderPaymentTest {
         );
 
         // when
-        // TODO 결제 진행
         paymentFacade.pay(criteriaPay);
 
         // then
@@ -144,17 +141,14 @@ public class OrderPaymentTest {
         // then
         assertThat(ex.getMessage()).isEqualTo("결제 처리 중 예외 발생");
 
-        // 주문 상태 확인
         Order updatedOrder = orderRepository.findById(result.getOrderId()).orElseThrow();
         assertThat(updatedOrder.getOrderStatus()).isEqualTo(OrderStatus.CANCELED);
 
-        // 재고 복구 확인
         Stock stock1 = stockRepository.findByProductId(productId1).get();
         Stock stock2 = stockRepository.findByProductId(productId2).get();
         assertThat(stock1.getQuantity()).isEqualTo(10);
         assertThat(stock2.getQuantity()).isEqualTo(10);
 
-        // 결제 이력 없음 확인
         assertThat(paymentHistoryRepository.existsByOrderId(result.getOrderId())).isFalse();
     }
 
