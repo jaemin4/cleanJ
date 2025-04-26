@@ -24,4 +24,9 @@ public class BalanceRepositoryImpl implements BalanceRepository {
     public Optional<Balance> findByUserId(Long userId) {
         return balanceJpaRepository.findByUserId(userId);
     }
+
+    @Override
+    public void deleteAll() {
+        balanceJpaRepository.deleteAll();
+    }
 }

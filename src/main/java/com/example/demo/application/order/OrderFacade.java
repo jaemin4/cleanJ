@@ -22,25 +22,20 @@ public class OrderFacade {
 
     @Transactional
     public OrderResult.Order order(OrderCriteria.Order criteria) {
-        // 1. 재고 유효성 검사
         productService.findSellingProductsByIds(criteria.toProductsCommand());
 
-        // 2. 재고 차감
         stockService.deductStock(criteria.toDeductStockCommand());
 
-        // 3. 상품 총금액
         long productTotalAmount = productService.calculateTotalPrice(
                 ProductCommand.Products.of(
                         criteria.getItems().stream()
-                                .map(OrderCriteria.OrderProduct::getProductId)
+                                .map(item -> ProductCommand.Products.OrderProduct.of(item.getProductId(), item.getQuantity()))
                                 .toList()
                 )
         );
 
-        // 4. 주문 생성
         OrderInfo.CreateOrder orderInfo = orderService.createOrder(criteria.toCreateOrderCommand(productTotalAmount));
 
-        // 5. 결과 반환
         OrderResult.Order result = OrderResult.Order.of(
                 orderInfo.getOrderId(),
                 orderInfo.getProductTotalPrice(),

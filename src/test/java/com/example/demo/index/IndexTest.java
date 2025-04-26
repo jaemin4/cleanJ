@@ -1,8 +1,8 @@
 package com.example.demo.index;
 
 import com.example.demo.domain.payment.PaymentHistory;
-import com.example.demo.infra.payment.PaymentJdbcRepository;
-import com.example.demo.infra.payment.TopOrderResult;
+import com.example.demo.infra.payment.PaymentHistoryJdbcRepository;
+import com.example.demo.infra.payment.ResTopOrderFive;
 import jakarta.transaction.Transactional;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -20,7 +20,7 @@ import java.util.Random;
 public class IndexTest {
 
     @Autowired
-    PaymentJdbcRepository paymentJdbcRepository;
+    PaymentHistoryJdbcRepository paymentHistoryJdbcRepository;
 
     @Test
     void 벌크결제이력_저장() {
@@ -32,16 +32,16 @@ public class IndexTest {
             long amount = 1000 + i;
             long orderId = random.nextInt(30) + 1; // 1 ~ 30
             String transactionId = "tx-" + i;
-            String status = random.nextBoolean() ? "PAID" : "CANCEL";
+            String status = random.nextBoolean() ? "200" : "500";
 
             list.add(PaymentHistory.create(userId, amount, orderId, transactionId, status));
         }
 
-        paymentJdbcRepository.saveAll(list);
+        paymentHistoryJdbcRepository.saveAll(list);
 
-        int count = paymentJdbcRepository.count();
+        int count = paymentHistoryJdbcRepository.count();
         System.out.println("저장된 결제 이력 수: " + count);
-        Assertions.assertThat(count).isEqualTo(53_000);
+        Assertions.assertThat(count).isEqualTo(30_000);
     }
 
     @Test
@@ -49,7 +49,7 @@ public class IndexTest {
         long totalTime = 0;
         for (int i = 0; i < 100; i++) {
             long start = System.currentTimeMillis();
-            List<Map<String, Object>> result = paymentJdbcRepository.findTop5OrdersByPaidStatusIndexed();
+            List<ResTopOrderFive> result = paymentHistoryJdbcRepository.findTop5OrdersByPaidStatus();
             long end = System.currentTimeMillis();
             totalTime += (end - start);
         }

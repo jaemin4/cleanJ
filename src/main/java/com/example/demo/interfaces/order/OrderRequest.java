@@ -22,8 +22,6 @@ public class OrderRequest {
         @Positive
         private Long userId;
 
-        private Long couponId;
-
         @Valid
         @NotEmpty
         private List<OrderProduct> items;
@@ -36,7 +34,7 @@ public class OrderRequest {
                     ))
                     .toList();
 
-            return OrderCriteria.Order.of(userId, couponId, products);
+            return OrderCriteria.Order.of(userId,products);
         }
 
     }

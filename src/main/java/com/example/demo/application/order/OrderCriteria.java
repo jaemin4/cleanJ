@@ -15,12 +15,10 @@ public class OrderCriteria {
     @Getter
     public static class Order{
         private final Long userId;
-        private final Long couponId;
         private final List<OrderProduct> items;
 
-        private Order(Long userId, Long couponId, List<OrderProduct> items) {
+        private Order(Long userId,List<OrderProduct> items) {
             this.userId = userId;
-            this.couponId = couponId;
             this.items = items;
         }
 
@@ -35,16 +33,16 @@ public class OrderCriteria {
             return StockCommand.DeductStock.of(stockProducts);
         }
 
-        public ProductCommand.Products toProductsCommand() {
+        public ProductCommand.ProductIds toProductsCommand() {
             List<Long> productIds = items.stream()
                     .map(OrderProduct::getProductId)
                     .toList();
 
-            return ProductCommand.Products.of(productIds);
+            return ProductCommand.ProductIds.of(productIds);
         }
 
-        public static Order of(Long userId, Long couponId, List<OrderProduct> items) {
-            return new Order(userId, couponId,items);
+        public static Order of(Long userId,List<OrderProduct> items) {
+            return new Order(userId,items);
         }
 
         public OrderCommand.CreateOrder toCreateOrderCommand(long productTotalAmount) {

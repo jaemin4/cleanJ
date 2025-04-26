@@ -41,7 +41,6 @@ public class UserCoupon {
     }
 
     public static UserCoupon issue(Long couponId, Long userId) {
-
         return new UserCoupon(couponId, userId);
     }
 

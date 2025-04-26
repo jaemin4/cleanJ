@@ -2,6 +2,7 @@ package com.example.demo.interfaces.coupon;
 
 import com.example.demo.domain.coupon.CouponService;
 import com.example.demo.support.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,7 +19,7 @@ public class CouponController {
     private final CouponService couponService;
 
     @PostMapping(value = "/issue")
-    public ApiResponse<Void> issueCoupon(@RequestBody CouponRequest.Issue request) {
+    public ApiResponse<Void> issueCoupon(@Valid @RequestBody CouponRequest.Issue request) {
         couponService.issue(request.toCommand());
         return ApiResponse.success();
     }

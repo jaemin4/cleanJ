@@ -33,7 +33,7 @@ public class MockPaymentService {
             log.info("고정 결제 성공 응답 반환");
             return PaymentMockResponse.MockPay.of(
                     "fixed-transaction-id",
-                    "200",
+                    "SUCCESS",
                     "결제 성공 (Mock 고정 응답)"
             );
 
