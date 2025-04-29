@@ -1,13 +1,11 @@
 package com.example.demo.domain.coupon;
 
+import com.example.demo.infra.comm.lock.RedissonLock;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Lock;
 
 @Service
 @RequiredArgsConstructor
@@ -18,12 +16,13 @@ public class CouponService {
     private final UserCouponRepository userCouponRepository;
 
     @Transactional
+    @RedissonLock(value = "#command.couponId")
     public void issue(CouponCommand.Issue command) {
-        final long couponId = command.getCouponId();
-        final long userId = command.getUserId();
+        Long couponId = command.getCouponId();
+        Long userId = command.getUserId();
 
-        Coupon coupon = couponRepository.findByCouponIdForLock(couponId)
-                .orElseThrow(() -> new RuntimeException("coupon could not be found"));
+        Coupon coupon = couponRepository.findByCouponId(couponId)
+                .orElseThrow(() -> new RuntimeException("coupon not found"));
 
         coupon.use();
         couponRepository.save(coupon);

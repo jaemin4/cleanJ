@@ -22,30 +22,34 @@ public class RedissonLockAspect {
     private final RedissonClient redissonClient;
 
     @Around("@annotation(com.example.demo.infra.comm.lock.RedissonLock)")
-    public void redissonLock(ProceedingJoinPoint joinPoint) throws Throwable {
+    public Object redissonLock(ProceedingJoinPoint joinPoint) throws Throwable {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
         RedissonLock annotation = method.getAnnotation(RedissonLock.class);
-        String lockKey = method.getName() + CustomSpringElParser.getDynamicValue(signature.getParameterNames(), joinPoint.getArgs(), annotation.value());
+
+        String lockKey = method.getName() +
+                CustomSpringElParser.getDynamicValue(signature.getParameterNames(), joinPoint.getArgs(), annotation.value());
 
         RLock lock = redissonClient.getLock(lockKey);
 
+        boolean lockable = false;
         try {
-            boolean lockable = lock.tryLock(annotation.waitTime(), annotation.leaseTime(), TimeUnit.MILLISECONDS);
+            lockable = lock.tryLock(annotation.waitTime(), annotation.leaseTime(), TimeUnit.MILLISECONDS);
             if (!lockable) {
-                log.info("Lock 획득 실패={}", lockKey);
-                return;
+                log.warn("Lock 획득 실패: {}", lockKey);
+                throw new RuntimeException("락 획득 실패");
             }
-            log.info("로직 수행");
-            joinPoint.proceed();
+
+            log.info("Lock 획득 성공: {}", lockKey);
+            return joinPoint.proceed(); //
         } catch (InterruptedException e) {
-            log.info("에러 발생");
+            log.error("Lock 처리 중 인터럽트", e);
             throw e;
         } finally {
-            log.info("락 해제");
-            lock.unlock();
+            if (lockable && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+                log.info("Lock 해제 완료: {}", lockKey);
+            }
         }
-
     }
-
 }

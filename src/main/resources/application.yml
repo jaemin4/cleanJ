@@ -9,10 +9,21 @@ spring:
   application:
     name: demo2
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 0
+  cache:
+    type: redis
+    redis:
+      use-key-prefix: true
+      cache-null-values: true
+
   datasource:
     url: jdbc:mysql://localhost:3306/jmdb
     username: root
-    password: 12345
+    password: 1111
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 50  # 5 → 50 이상으로 확장
