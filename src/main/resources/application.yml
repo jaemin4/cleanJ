@@ -9,6 +9,9 @@ spring:
   application:
     name: demo2
 
+  profiles:
+    active: consumer
+
   data:
     redis:
       host: localhost
@@ -19,6 +22,12 @@ spring:
     redis:
       use-key-prefix: true
       cache-null-values: true
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
 
   datasource:
     url: jdbc:mysql://localhost:3306/jmdb
