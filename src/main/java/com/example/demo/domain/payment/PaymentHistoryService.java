@@ -1,17 +1,12 @@
 package com.example.demo.domain.payment;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.example.demo.support.Utils;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import java.util.List;
-
-import static com.example.demo.infra.payment.PaymentPopularScheduler.POPULAR_PRODUCTS_KEY;
 
 @Service
 @RequiredArgsConstructor
@@ -19,8 +14,6 @@ import static com.example.demo.infra.payment.PaymentPopularScheduler.POPULAR_PRO
 public class PaymentHistoryService {
 
     private final PaymentHistoryRepository paymentHistoryRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
-    private final ObjectMapper objectMapper;
 
     @Transactional
     public void recordPaymentHistory(PaymentHistoryCommand.Save command) {
@@ -56,22 +49,5 @@ public class PaymentHistoryService {
 
         log.error("결제 이력 저장 재시도 실패: {}", Utils.toJson(command));
     }
-
-    public List<PaymentHistoryInfo.Top5OrdersForCaching> getPopularProductsFromCache() {
-        try {
-            String json = (String) redisTemplate.opsForValue().get(POPULAR_PRODUCTS_KEY);
-            if (json == null) return List.of();
-
-            return objectMapper.readValue(
-                    json,
-                    new TypeReference<List<PaymentHistoryInfo.Top5OrdersForCaching>>() {}
-            );
-        } catch (Exception e) {
-            log.error("인기 상품 캐시 역직렬화 실패", e);
-            return List.of();
-        }
-    }
-
-
 
 }
