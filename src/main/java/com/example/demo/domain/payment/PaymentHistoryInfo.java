@@ -1,6 +1,5 @@
 package com.example.demo.domain.payment;
 
-import com.example.demo.domain.order.OrderInfo;
 import com.example.demo.infra.payment.ResTopOrderFive;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -28,6 +27,28 @@ public class PaymentHistoryInfo {
         public static List<Top5Orders> fromResList(List<ResTopOrderFive> list) {
             return list.stream()
                     .map(item -> Top5Orders.of(item.getOrderId(), item.getCount()))
+                    .toList();
+        }
+
+    }
+
+    @Getter
+    public static class Top5OrdersForCaching {
+        private final Long orderId;
+        private final Long count;
+
+        public Top5OrdersForCaching(Long orderId, Long count) {
+            this.orderId = orderId;
+            this.count = count;
+        }
+
+        public static Top5OrdersForCaching of(Long orderId, Long count) {
+            return new Top5OrdersForCaching(orderId, count);
+        }
+
+        public static List<Top5OrdersForCaching> fromResList(List<ResTopOrderFive> list) {
+            return list.stream()
+                    .map(item -> Top5OrdersForCaching.of(item.getOrderId(), item.getCount()))
                     .toList();
         }
 
