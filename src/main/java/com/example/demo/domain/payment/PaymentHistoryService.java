@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.example.demo.infra.payment.PaymentPopularScheduler.POPULAR_PRODUCTS_KEY;
 
@@ -25,6 +28,7 @@ public class PaymentHistoryService {
     private final PaymentHistoryRepository paymentHistoryRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final RedissonClient redissonClient;
 
     @Transactional
     public void recordPaymentHistory(PaymentHistoryCommand.Save command) {
@@ -74,15 +78,55 @@ public class PaymentHistoryService {
             }
         }
 
-        List<ResTopOrderFive> popularProducts = paymentHistoryRepository.findTop5OrdersByPaidStatus();
-        try {
-            String newJson = objectMapper.writeValueAsString(popularProducts);
-            redisTemplate.opsForValue().set(POPULAR_PRODUCTS_KEY, newJson, Duration.ofMinutes(5));
-        } catch (Exception e) {
-            log.warn("인기 상품 캐시 저장 실패", e);
-        }
+        RLock lock = redissonClient.getLock("lock:popular:top5");
+        boolean isLocked = false;
 
-        return PaymentHistoryInfo.Top5OrdersForCaching.fromResTopList(popularProducts);
+        try {
+            isLocked = lock.tryLock(5, 2, TimeUnit.SECONDS);
+
+            if (isLocked) {
+                json = (String) redisTemplate.opsForValue().get(POPULAR_PRODUCTS_KEY);
+                if (json != null) {
+                    return objectMapper.readValue(
+                            json,
+                            new TypeReference<List<PaymentHistoryInfo.Top5OrdersForCaching>>() {}
+                    );
+                }
+
+                List<ResTopOrderFive> popularProducts = paymentHistoryRepository.findTop5OrdersByPaidStatus();
+
+                try {
+                    String newJson = objectMapper.writeValueAsString(popularProducts);
+                    redisTemplate.opsForValue().set(POPULAR_PRODUCTS_KEY, newJson, Duration.ofMinutes(5));
+                } catch (Exception e) {
+                    log.warn("인기 상품 캐시 저장 실패", e);
+                }
+
+                return PaymentHistoryInfo.Top5OrdersForCaching.fromResTopList(popularProducts);
+            } else {
+                log.warn("락 획득 실패, 캐시 재시도");
+                Thread.sleep(100); 
+                json = (String) redisTemplate.opsForValue().get(POPULAR_PRODUCTS_KEY);
+                if (json != null) {
+                    return objectMapper.readValue(
+                            json,
+                            new TypeReference<List<PaymentHistoryInfo.Top5OrdersForCaching>>() {}
+                    );
+                } else {
+                    throw new IllegalStateException("캐시 초기화 대기 중 실패");
+                }
+            }
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("락 대기 중 인터럽트 발생", e);
+        } catch (Exception e) {
+            throw new RuntimeException("인기 상품 조회 실패", e);
+        } finally {
+            if (isLocked && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
     }
 
 
