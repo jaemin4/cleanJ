@@ -25,6 +25,9 @@ dependencies {
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     implementation 'org.redisson:redisson-spring-boot-starter:3.27.0'
     implementation ("org.springframework.boot:spring-boot-starter-amqp")
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+
 
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
