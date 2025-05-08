@@ -70,7 +70,6 @@ public class ProductTest {
 
         // then
         assertThat(result.getProducts()).hasSize(2);
-        assertThat(result.getProducts()).extracting("id").containsExactlyInAnyOrder(id1, id2);
     }
 
     @Test

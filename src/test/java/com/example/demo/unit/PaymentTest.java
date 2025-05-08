@@ -5,10 +5,12 @@ import com.example.demo.infra.payment.MockPaymentService;
 import com.example.demo.infra.payment.PaymentMockRequest;
 import com.example.demo.infra.payment.PaymentMockResponse;
 import com.example.demo.infra.payment.ResTopOrderFive;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
@@ -22,11 +24,12 @@ public class PaymentTest {
 
     private PaymentHistoryRepository paymentHistoryRepository;
     private PaymentHistoryService paymentHistoryService;
-
+    private RedisTemplate<String,Object> redisTemplate;
+    private ObjectMapper objectMapper;
     @BeforeEach
     void setUp() {
         paymentHistoryRepository = mock(PaymentHistoryRepository.class);
-        paymentHistoryService = new PaymentHistoryService(paymentHistoryRepository);
+        paymentHistoryService = new PaymentHistoryService(paymentHistoryRepository,redisTemplate,objectMapper);
     }
 
     @Test
@@ -80,7 +83,7 @@ public class PaymentTest {
 
         // then
         assertThat(response.getTransactionId()).isEqualTo("fixed-transaction-id");
-        assertThat(response.getStatus()).isEqualTo("200");
+        assertThat(response.getStatus()).isEqualTo("SUCCESS");
         assertThat(response.getMessage()).contains("결제 성공");
         verify(restTemplate, times(1)).postForEntity(anyString(), any(), eq(String.class));
     }

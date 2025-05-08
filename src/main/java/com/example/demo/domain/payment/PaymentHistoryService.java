@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.util.Collections;
 import java.util.List;
 
 import static com.example.demo.infra.payment.PaymentPopularScheduler.POPULAR_PRODUCTS_KEY;
@@ -59,8 +61,11 @@ public class PaymentHistoryService {
 
     public List<PaymentHistoryInfo.Top5OrdersForCaching> getPopularProductsFromCache() {
         try {
+            log.info("받아올 데이터 : {}", Utils.toJson(redisTemplate.opsForValue().get(POPULAR_PRODUCTS_KEY)));
             String json = (String) redisTemplate.opsForValue().get(POPULAR_PRODUCTS_KEY);
-            if (json == null) return List.of();
+            if (json == null) {
+                return List.of();
+            }
 
             return objectMapper.readValue(
                     json,
@@ -68,9 +73,10 @@ public class PaymentHistoryService {
             );
         } catch (Exception e) {
             log.error("인기 상품 캐시 역직렬화 실패", e);
-            return List.of();
+            return Collections.emptyList();
         }
     }
+
 
 
 

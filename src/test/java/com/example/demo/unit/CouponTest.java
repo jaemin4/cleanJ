@@ -7,6 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+
 import java.util.Optional;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -22,9 +25,30 @@ public class CouponTest {
     @InjectMocks
     private CouponService couponService;
 
+    @Mock
+    private RedissonClient redissonClient;
+
+    @Mock
+    private RLock rLock;
+
+    @Mock
+    private CouponTransactionService couponTransactionService;
+
     @BeforeEach
-    void setUp() {
+    void setUp() throws InterruptedException {
         MockitoAnnotations.openMocks(this);
+
+        when(redissonClient.getLock(anyString())).thenReturn(rLock);
+        when(rLock.tryLock(anyLong(), anyLong(), any())).thenReturn(true);
+        doNothing().when(rLock).unlock();
+
+        // transaction mock 설정
+        doAnswer(invocation -> {
+            CouponCommand.Issue command = invocation.getArgument(0);
+            // 직접 CouponService 내부 로직과 동일하게 흉내낼 수도 있음
+            couponService.issue(command);
+            return null;
+        }).when(couponTransactionService).issueWithTransaction(any());
     }
 
     @DisplayName("정상적으로 쿠폰을 발급한다")
@@ -34,7 +58,7 @@ public class CouponTest {
         Long couponId = 1L;
         Long userId = 10L;
         Coupon coupon = Coupon.create("할인쿠폰", 20, 5L);
-        CouponCommand.Issue command = CouponCommand.Issue.of(couponId, userId);
+        CouponCommand.Issue command = CouponCommand.Issue.of(coupon.getId(), userId);
         when(couponRepository.findById(anyLong())).thenReturn(Optional.of(coupon));
         when(userCouponRepository.findByCouponIdAndUserId(anyLong(), anyLong())).thenReturn(Optional.empty());
 
