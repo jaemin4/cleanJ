@@ -52,8 +52,7 @@ public class PaymentFacade {
                     criteria.toPaymentMockRequest(order.getProductTotalPrice())
             );
 
-            //단순 테스트 용도 외부 API
-            if (!"SUCCESS".equals(mockPaymentResponse.getStatus())) {
+            if (!"200".equals(mockPaymentResponse.getStatus())) {
                 log.error("결제 실패: orderId={}, status={}", criteria.getOrderId(), mockPaymentResponse.getStatus());
                 throw new RuntimeException("결제 API 실패");
             }
