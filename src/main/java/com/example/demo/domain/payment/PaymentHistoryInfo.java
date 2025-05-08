@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class PaymentHistoryInfo {
@@ -50,6 +51,19 @@ public class PaymentHistoryInfo {
             return list.stream()
                     .map(item -> Top5OrdersForCaching.of(item.getOrderId(), item.getCount()))
                     .toList();
+        }
+
+        public static List<Top5OrdersForCaching> fromResTopList(List<ResTopOrderFive> list) {
+            if (list == null || list.isEmpty()) {
+                return List.of();
+            }
+
+            return list.stream()
+                    .map(res -> new Top5OrdersForCaching(
+                            res.getOrderId(),
+                            res.getCount()
+                    ))
+                    .collect(Collectors.toList());
         }
 
     }

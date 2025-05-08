@@ -26,6 +26,6 @@ public class PaymentController {
 
     @GetMapping(value = "/getPopular")
     public ApiResponse<List<PaymentResponse.Top5OrdersCaching>> getPop(){
-        return ApiResponse.success(PaymentResponse.Top5OrdersCaching.toResponseList(paymentHistoryService.getPopularProductsFromCache()));
+        return ApiResponse.success(PaymentResponse.Top5OrdersCaching.toResponseList(paymentHistoryService.getPopularProducts()));
     }
 }

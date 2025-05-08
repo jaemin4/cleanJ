@@ -1,5 +1,6 @@
 package com.example.demo.domain.payment;
 
+import com.example.demo.infra.payment.ResTopOrderFive;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.example.demo.support.Utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +11,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 
@@ -59,22 +61,28 @@ public class PaymentHistoryService {
         log.error("결제 이력 저장 재시도 실패: {}", Utils.toJson(command));
     }
 
-    public List<PaymentHistoryInfo.Top5OrdersForCaching> getPopularProductsFromCache() {
-        try {
-            log.info("받아올 데이터 : {}", Utils.toJson(redisTemplate.opsForValue().get(POPULAR_PRODUCTS_KEY)));
-            String json = (String) redisTemplate.opsForValue().get(POPULAR_PRODUCTS_KEY);
-            if (json == null) {
-                return List.of();
+    public List<PaymentHistoryInfo.Top5OrdersForCaching> getPopularProducts() {
+        String json = (String) redisTemplate.opsForValue().get(POPULAR_PRODUCTS_KEY);
+        if (json != null) {
+            try {
+                return objectMapper.readValue(
+                        json,
+                        new TypeReference<List<PaymentHistoryInfo.Top5OrdersForCaching>>() {}
+                );
+            } catch (Exception e) {
+                log.error("캐시 역직렬화 실패", e);
             }
-
-            return objectMapper.readValue(
-                    json,
-                    new TypeReference<List<PaymentHistoryInfo.Top5OrdersForCaching>>() {}
-            );
-        } catch (Exception e) {
-            log.error("인기 상품 캐시 역직렬화 실패", e);
-            return Collections.emptyList();
         }
+
+        List<ResTopOrderFive> popularProducts = paymentHistoryRepository.findTop5OrdersByPaidStatus();
+        try {
+            String newJson = objectMapper.writeValueAsString(popularProducts);
+            redisTemplate.opsForValue().set(POPULAR_PRODUCTS_KEY, newJson, Duration.ofMinutes(5));
+        } catch (Exception e) {
+            log.warn("인기 상품 캐시 저장 실패", e);
+        }
+
+        return PaymentHistoryInfo.Top5OrdersForCaching.fromResTopList(popularProducts);
     }
 
 
