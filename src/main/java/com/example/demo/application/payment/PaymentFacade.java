@@ -1,85 +1,42 @@
 package com.example.demo.application.payment;
 
-import com.example.demo.domain.balance.BalanceService;
-import com.example.demo.domain.coupon.CouponService;
-import com.example.demo.domain.order.OrderInfo;
-import com.example.demo.domain.order.OrderService;
-import com.example.demo.domain.order.OrderStatus;
-import com.example.demo.domain.payment.PaymentHistoryService;
-import com.example.demo.domain.stock.StockCommand;
-import com.example.demo.domain.stock.StockService;
-import com.example.demo.infra.payment.MockPaymentService;
-import com.example.demo.infra.payment.PaymentMockResponse;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class PaymentFacade {
 
-    private final PaymentHistoryService paymentHistoryService;
-    private final OrderService orderService;
-    private final BalanceService balanceService;
-    private final MockPaymentService mockPaymentService;
-    private final CouponService couponService;
-    private final StockService stockService;
+    private final RedissonClient redissonClient;
+    private final PaymentTransaction paymentTransaction;
 
-    @Transactional
     public void pay(PaymentCriteria.Payment criteria) {
+        String lockKey = "lock:payment:user:" + criteria.getUserId();
+        RLock lock = redissonClient.getLock(lockKey);
+        boolean isLocked = false;
+
         try {
-            OrderInfo.GetOrder order = orderService.getOrderById(criteria.getOrderId());
-
-            long finalAmount = BigDecimal.valueOf(order.getProductTotalPrice())
-                    .setScale(0, RoundingMode.HALF_UP)
-                    .longValue();
-
-            if (criteria.getCouponId() != null) {
-                couponService.use(criteria.toUseCouponCommand());
-                double discountRate = couponService.getDiscountRate(criteria.toGetDiscountRateCommand());
-                finalAmount = (long) (finalAmount - (finalAmount * discountRate * 0.01));
+            isLocked = lock.tryLock(3, 5, TimeUnit.SECONDS);
+            if (!isLocked) {
+                throw new IllegalStateException("중복 결제 요청입니다. 잠시 후 다시 시도해주세요.");
             }
 
-            balanceService.use(criteria.toBalanceUseCommand(finalAmount));
+            paymentTransaction.processPaymentWithTransaction(criteria);
 
-            orderService.updateOrderStatus(criteria.getOrderId(), OrderStatus.PAID);
-
-            PaymentMockResponse.MockPay mockPaymentResponse = mockPaymentService.callAndValidateMockApi(
-                    criteria.toPaymentMockRequest(order.getProductTotalPrice())
-            );
-
-            //단순 테스트 용도 외부 API
-            if (!"SUCCESS".equals(mockPaymentResponse.getStatus())) {
-                log.error("결제 실패: orderId={}, status={}", criteria.getOrderId(), mockPaymentResponse.getStatus());
-                throw new RuntimeException("결제 API 실패");
-            }
-
-            try {
-                paymentHistoryService.recordPaymentHistory(
-                        criteria.toPaymentHistoryCommand(
-                                mockPaymentResponse.getTransactionId(),
-                                mockPaymentResponse.getStatus(),
-                                criteria.getOrderId())
-                );
-            } catch (Exception e) {
-
-                log.error("결제 이력 저장 실패: orderId={}, txId={}, error={}",
-                        criteria.getOrderId(), mockPaymentResponse.getTransactionId(), e.getMessage());
-            }
-
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("결제 락 대기 중 인터럽트 발생", e);
         } catch (Exception e) {
-            log.warn("결제 실패, 주문 상태 취소 및 재고 복구: orderId={}", criteria.getOrderId());
-            orderService.updateOrderStatus(criteria.getOrderId(), OrderStatus.CANCELED);
-
-            OrderInfo.GetOrderItems getOrderItems = orderService.getOrderItemByOrderId(criteria.getOrderId());
-            StockCommand.RecoveryStock recoveryStock = criteria.toRecoveryStockCommand(getOrderItems);
-            stockService.recoveryStock(recoveryStock);
-
             throw new RuntimeException("결제 처리 중 예외 발생", e);
+        } finally {
+            if (isLocked && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
     }
 
