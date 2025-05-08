@@ -11,7 +11,7 @@ public class TestConfig {
     @Bean
     @Primary
     public PaymentHistoryService mockFailingPaymentHistoryService() {
-        return new PaymentHistoryService(null,null,null) {
+        return new PaymentHistoryService(null,null,null,null) {
             @Override
             public void recordPaymentHistory(PaymentHistoryCommand.Save command) {
                 throw new IllegalStateException("강제 결제 이력 저장 실패");
