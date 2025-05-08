@@ -3,6 +3,7 @@ package com.example.demo.concurrency;
 import com.example.demo.application.order.OrderCriteria;
 import com.example.demo.application.order.OrderFacade;
 import com.example.demo.application.order.OrderResult;
+import com.example.demo.application.payment.PaymentCriteria;
 import com.example.demo.application.payment.PaymentFacade;
 import com.example.demo.domain.order.Order;
 import com.example.demo.domain.order.OrderRepository;
@@ -24,6 +25,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -35,6 +37,8 @@ public class OrderPaymentTest {
     @Autowired private ProductRepository productRepository;
     @Autowired private StockJpaRepository stockRepository;
     @Autowired private OrderRepository orderRepository;
+    @Autowired private PaymentFacade paymentFacade;
+    @Autowired private StockService stockService;
     private final Long baseUserId = 1000L;
 
     @Test
@@ -83,4 +87,53 @@ public class OrderPaymentTest {
         assertThat(allOrders).hasSize(threadCount);
         allOrders.forEach(order -> assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CREATED));
     }
+
+
+    @Test
+    @DisplayName("여러 사용자가 동시에 결제요청 보내었을때 모두 정상 처리되어야 한다")
+    void payment_concurrent_all_success() throws InterruptedException {
+        int threadCount = 10;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+        AtomicInteger successCount = new AtomicInteger();
+
+        for (int i = 0; i < threadCount; i++) {
+            final long userId = baseUserId + i;
+
+            executor.submit(() -> {
+                try {
+                    Product product = productRepository.save(Product.create("타르트", 2000L, ProductSellingStatus.SELLING));
+                    stockRepository.save(Stock.create(product.getId(), 5));
+
+                    List<OrderCriteria.OrderProduct> items = List.of(
+                            OrderCriteria.OrderProduct.of(product.getId(), 1L)
+                    );
+                    OrderCriteria.Order orderCriteria = OrderCriteria.Order.of(userId, items);
+                    OrderResult.Order orderResult = orderFacade.order(orderCriteria);
+
+                    paymentFacade.pay(PaymentCriteria.Payment.of(
+                            orderResult.getOrderId(), userId, null
+                    ));
+
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+        executor.shutdown();
+
+        assertThat(successCount.get()).isEqualTo(threadCount);
+    }
+
+
+
+
+
+
+
 }
