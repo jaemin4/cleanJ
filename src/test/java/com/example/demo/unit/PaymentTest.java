@@ -10,14 +10,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 public class PaymentTest {
@@ -107,6 +113,50 @@ public class PaymentTest {
         assertThat(result).hasSize(5);
         assertThat(result.get(0).getOrderId()).isEqualTo(101L);
         assertThat(result.get(4).getCount()).isEqualTo(14L);
+    }
+
+
+    @Mock
+    private RedissonClient redissonClient;
+
+    @Mock
+    private RLock lock;
+
+    private static final String POPULAR_PRODUCTS_KEY = "popular:top5";
+
+    @Test
+    @DisplayName("캐시 hit 시 바로 반환")
+    void getPopularProducts_cacheHit() throws Exception {
+        String json = "[{\"orderId\":101,\"count\":20}]";
+        List<PaymentHistoryInfo.Top5OrdersForCaching> expected = List.of(
+                new PaymentHistoryInfo.Top5OrdersForCaching(101L, 20L)
+        );
+
+        given(redisTemplate.opsForValue().get(POPULAR_PRODUCTS_KEY)).willReturn(json);
+        given(objectMapper.readValue(eq(json), any(TypeReference.class))).willReturn(expected);
+
+        List<PaymentHistoryInfo.Top5OrdersForCaching> result = paymentPopularService.getPopularProducts();
+
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("캐시 miss → 락 획득 성공 → DB 조회 및 캐시 저장")
+    void getPopularProducts_cacheMissWithLock() throws Exception {
+        given(redisTemplate.opsForValue().get(POPULAR_PRODUCTS_KEY)).willReturn(null);
+        given(redissonClient.getLock(anyString())).willReturn(lock);
+        given(lock.tryLock(anyLong(), anyLong(), any())).willReturn(true);
+
+        List<ResTopOrderFive> dbList = List.of(new ResTopOrderFive(101L, 20L));
+        given(paymentHistoryRepository.findTop5OrdersByPaidStatus()).willReturn(dbList);
+
+        List<PaymentHistoryInfo.Top5OrdersForCaching> expected = PaymentHistoryInfo.Top5OrdersForCaching.fromResTopList(dbList);
+        given(objectMapper.writeValueAsString(any())).willReturn("cached-json");
+
+        List<PaymentHistoryInfo.Top5OrdersForCaching> result = paymentHistoryService.getPopularProducts();
+
+        assertThat(result).isEqualTo(expected);
+        verify(redisTemplate.opsForValue()).set(eq(POPULAR_PRODUCTS_KEY), eq("cached-json"), any(Duration.class));
     }
 
 }
