@@ -6,18 +6,13 @@ import com.example.demo.application.order.OrderResult;
 import com.example.demo.domain.balance.BalanceCommand;
 import com.example.demo.domain.balance.BalanceService;
 import com.example.demo.domain.coupon.*;
-import com.example.demo.domain.order.Order;
-import com.example.demo.domain.order.OrderRepository;
-import com.example.demo.domain.order.OrderStatus;
 import com.example.demo.domain.payment.PaymentHistory;
-import com.example.demo.domain.payment.PaymentHistoryInfo;
 import com.example.demo.domain.payment.PaymentHistoryRepository;
 import com.example.demo.domain.payment.PaymentHistoryService;
 import com.example.demo.domain.product.Product;
 import com.example.demo.domain.product.ProductRepository;
 import com.example.demo.domain.product.ProductSellingStatus;
 import com.example.demo.domain.stock.Stock;
-import com.example.demo.infra.order.OrderJpaRepository;
 import com.example.demo.infra.stock.StockJpaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
@@ -35,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.LongStream;
 
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -50,7 +44,8 @@ public class PaymentTest {
     @Autowired ObjectMapper objectMapper;
     @Autowired ProductRepository productRepository;
     @Autowired StockJpaRepository stockRepository;
-    @Autowired OrderFacade orderFacade;
+    @Autowired
+    OrderFacade orderFacade;
     @Autowired BalanceService balanceService;
     @Autowired CouponService couponService;
     @Autowired CouponRepository couponRepository;

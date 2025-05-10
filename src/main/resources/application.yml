@@ -1,5 +1,5 @@
 server:
-  port: 8083
+  port: 8080
   servlet:
     context-path: /
     encoding:
@@ -9,13 +9,35 @@ spring:
   application:
     name: demo2
 
+  profiles:
+    active: consumer
+
+  data:
+    redis:
+      host: localhost
+      #host: redis-master
+      port: 6379
+      timeout: 0
+  cache:
+    type: redis
+    redis:
+      use-key-prefix: true
+      cache-null-values: true
+
+  rabbitmq:
+    host: localhost
+    #host: rabbitmq-1
+    port: 5672
+    username: guest
+    password: guest
+
   datasource:
-    url: jdbc:mysql://localhost:3306/jmdb
-    username: root
-    password: 12345
+    url: jdbc:mysql://my8003.gabiadb.com:3306/jmdb?useUnicode=true&characterEncoding=utf-8&characterSetResults=utf-8&serverTimezone=Asia/Seoul
+    username: jmhost
+    password: jaemin212121
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      maximum-pool-size: 50  # 5 → 50 이상으로 확장
+      maximum-pool-size: 20
       minimum-idle: 10
       idle-timeout: 10000
       connection-timeout: 20000

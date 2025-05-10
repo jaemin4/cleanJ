@@ -3,11 +3,11 @@ package com.example.demo.domain.coupon;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Lock;
+
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -16,22 +16,29 @@ public class CouponService {
 
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
+    private final RedissonClient redissonClient;
+    private final CouponTransactionService couponTransactionService;
 
-    @Transactional
     public void issue(CouponCommand.Issue command) {
-        final long couponId = command.getCouponId();
-        final long userId = command.getUserId();
+        String lockName = "lock:coupon:" + command.getCouponId();
+        RLock lock = redissonClient.getLock(lockName);
 
-        Coupon coupon = couponRepository.findByCouponIdForLock(couponId)
-                .orElseThrow(() -> new RuntimeException("coupon could not be found"));
-
-        coupon.use();
-        couponRepository.save(coupon);
-
+        boolean isLocked = false;
         try {
-            userCouponRepository.save(UserCoupon.issue(couponId, userId));
-        } catch (DataIntegrityViolationException e) {
-            throw new IllegalStateException("중복 발급이 불가능합니다. couponId=" + couponId);
+            isLocked = lock.tryLock(5, 3, TimeUnit.SECONDS);
+            if (!isLocked) {
+                throw new IllegalStateException("락 획득 실패. 동시 요청 과다");
+            }
+
+            couponTransactionService.issueWithTransaction(command);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("락 대기 중 인터럽트 발생", e);
+        } finally {
+            if (isLocked && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
     }
 
