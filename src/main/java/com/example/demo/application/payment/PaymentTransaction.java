@@ -1,6 +1,5 @@
 package com.example.demo.application.payment;
 
-
 import com.example.demo.domain.balance.BalanceService;
 import com.example.demo.domain.coupon.CouponService;
 import com.example.demo.domain.order.OrderInfo;
@@ -13,11 +12,8 @@ import com.example.demo.infra.payment.PaymentMockResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-
 
 @Slf4j
 @Service
@@ -29,6 +25,7 @@ public class PaymentTransaction {
     private final MockPaymentService mockPaymentService;
     private final CouponService couponService;
     private final StockService stockService;
+    private final RabbitTemplate rabbitTemplate;
 
     @Transactional
     public void processPaymentWithTransaction(PaymentCriteria.Payment criteria) {
@@ -68,7 +65,14 @@ public class PaymentTransaction {
             /*
                 5. 결제내역 저장
             */
-            try {
+            rabbitTemplate.convertAndSend(
+                    "exchange.payment.history", "route.payment.history.save",
+                    criteria.toPaymentHistoryConsumerCommand(finalAmount,mockPaymentResponse.getTransactionId(),mockPaymentResponse.getStatus())
+            );
+
+
+
+/*            try {
                 paymentHistoryService.recordPaymentHistory(
                         criteria.toPaymentHistoryCommand(
                                 mockPaymentResponse.getTransactionId(),
@@ -79,7 +83,7 @@ public class PaymentTransaction {
             } catch (Exception e) {
                 log.error("결제 이력 저장 실패: orderId={}, txId={}, error={}",
                         criteria.getOrderId(), mockPaymentResponse.getTransactionId(), e.getMessage());
-            }
+            }*/
 
         }
 
