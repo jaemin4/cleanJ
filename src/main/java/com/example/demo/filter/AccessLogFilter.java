@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
+import static com.example.demo.support.constants.RabbitmqConstant.*;
+
 @Slf4j
 @RequiredArgsConstructor
 public class AccessLogFilter implements Filter {
@@ -57,7 +59,7 @@ public class AccessLogFilter implements Filter {
         );
 
         log.info("AccessLog : {}", Utils.toJson(accessLog));
-        rabbitTemplate.convertAndSend("exchange.access.log","route.access.log.save",accessLog.toCommand());
+        rabbitTemplate.convertAndSend(EXCHANGE_ACCESS_LOG,ROUTE_ACCESS_LOG_SAVE,accessLog.toCommand());
         res.copyBodyToResponse();
 
     }

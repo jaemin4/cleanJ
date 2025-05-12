@@ -9,6 +9,8 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import static com.example.demo.support.constants.RabbitmqConstant.QUEUE_PAYMENT_HISTORY_DB_SAVE;
+
 @Service
 @Profile("consumer")
 @Slf4j
@@ -17,7 +19,7 @@ public class PaymentHistoryConsumerService {
 
     private final PaymentHistoryService paymentHistoryService;
 
-    @RabbitListener(queues = "queue.payment.history.db.save", concurrency = "1")
+    @RabbitListener(queues =QUEUE_PAYMENT_HISTORY_DB_SAVE, concurrency = "1")
     public void save(PaymentHistoryConsumerCommand.Save command) {
         try{
             paymentHistoryService.recordPaymentHistory(

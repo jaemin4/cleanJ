@@ -15,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
+import static com.example.demo.support.constants.RabbitmqConstant.ROUTE_PAYMENT_HISTORY_DB_SAVE;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -66,7 +68,7 @@ public class PaymentTransaction {
                 5. 결제내역 저장
             */
             rabbitTemplate.convertAndSend(
-                    "exchange.payment.history", "route.payment.history.db.save",
+                    "exchange.payment.history", ROUTE_PAYMENT_HISTORY_DB_SAVE,
                     criteria.toPaymentHistoryConsumerCommand(finalAmount,mockPaymentResponse.getTransactionId(),mockPaymentResponse.getStatus())
             );
 

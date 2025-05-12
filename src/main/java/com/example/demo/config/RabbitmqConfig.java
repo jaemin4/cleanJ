@@ -13,6 +13,7 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import static com.example.demo.support.constants.RabbitmqConstant.*;
 
 @RequiredArgsConstructor
 @Configuration
@@ -24,45 +25,51 @@ public class RabbitmqConfig {
     */
     @Bean
     public DirectExchange exchangeAccessLog() {
-        return new DirectExchange("exchange.access.log");
+        return new DirectExchange(EXCHANGE_ACCESS_LOG);
     }
 
     @Bean
     public Queue queueAccessLogSave() {
-        return new Queue("queue.access.log.save", true);
+        return new Queue(QUEUE_ACCESS_LOG_SAVE, true);
     }
 
+
     @Bean
-    public Binding bindingMailSend(Queue queueAccessLogSave, DirectExchange exchangeAccessLog) {
+    public Binding bindingAccessLogSave(Queue queueAccessLogSave, DirectExchange exchangeAccessLog) {
         return BindingBuilder.bind(queueAccessLogSave)
                 .to(exchangeAccessLog)
-                .with("route.access.log.save");
+                .with(ROUTE_ACCESS_LOG_SAVE);
     }
     /*
         PaymentHistory
     */
     @Bean
+    public DirectExchange exchangePaymentHistory() {
+        return new DirectExchange(EXCHANGE_PAYMENT_HISTORY);
+    }
+
+    @Bean
     public Queue queuePaymentHistoryDbSave() {
-        return new Queue("queue.payment.history.db.save", true);
+        return new Queue(QUEUE_PAYMENT_HISTORY_DB_SAVE, true);
     }
 
     @Bean
     public Binding bindingPaymentHistoryDbSave(Queue queuePaymentHistoryDbSave, DirectExchange exchangePaymentHistory) {
         return BindingBuilder.bind(queuePaymentHistoryDbSave)
                 .to(exchangePaymentHistory)
-                .with("route.payment.history.db.save");
+                .with(ROUTE_PAYMENT_HISTORY_DB_SAVE);
     }
 
     @Bean
     public Queue queuePaymentHistoryRankingUpdate() {
-        return new Queue("queue.payment.history.redis.update", true);
+        return new Queue(QUEUE_PAYMENT_HISTORY_REDIS_UPDATE, true);
     }
 
     @Bean
     public Binding bindingPaymentHistoryRankingUpdate(Queue queuePaymentHistoryRankingUpdate, DirectExchange exchangePaymentHistory) {
         return BindingBuilder.bind(queuePaymentHistoryRankingUpdate)
                 .to(exchangePaymentHistory)
-                .with("route.payment.history.redis.update");
+                .with(ROUTE_PAYMENT_HISTORY_REDIS_UPDATE);
     }
 
 

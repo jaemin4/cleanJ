@@ -8,6 +8,8 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import static com.example.demo.support.constants.RabbitmqConstant.QUEUE_ACCESS_LOG_SAVE;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -16,7 +18,7 @@ public class AccessLogConsumerService {
 
     private final AccessLogJpaRepository accessLogJpaRepository;
 
-    @RabbitListener(queues = "queue.access.log.save", concurrency = "1")
+    @RabbitListener(queues = QUEUE_ACCESS_LOG_SAVE, concurrency = "1")
     public void saveAccessLog(AccessLogConsumerCommand.Save command) {
         try {
             AccessLog accessLog = AccessLog.of(command);
