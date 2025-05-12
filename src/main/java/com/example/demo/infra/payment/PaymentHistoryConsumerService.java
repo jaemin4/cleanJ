@@ -1,9 +1,8 @@
 package com.example.demo.infra.payment;
 
-import com.example.demo.domain.payment.PaymentHistory;
 import com.example.demo.domain.payment.PaymentHistoryCommand;
 import com.example.demo.domain.payment.PaymentHistoryService;
-import com.example.demo.support.Utils;
+import com.example.demo.support.util.Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -18,7 +17,7 @@ public class PaymentHistoryConsumerService {
 
     private final PaymentHistoryService paymentHistoryService;
 
-    @RabbitListener(queues = "queue.payment.history.save", concurrency = "1")
+    @RabbitListener(queues = "queue.payment.history.db.save", concurrency = "1")
     public void save(PaymentHistoryConsumerCommand.Save command) {
         try{
             paymentHistoryService.recordPaymentHistory(

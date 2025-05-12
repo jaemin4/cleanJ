@@ -1,6 +1,6 @@
 package com.example.demo.support.exception;
 
-import com.example.demo.support.ApiResponse;
+import com.example.demo.support.util.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;

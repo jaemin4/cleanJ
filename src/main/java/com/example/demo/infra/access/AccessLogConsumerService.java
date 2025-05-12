@@ -1,7 +1,7 @@
 package com.example.demo.infra.access;
 
 import com.example.demo.domain.access.AccessLog;
-import com.example.demo.support.Utils;
+import com.example.demo.support.util.Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;

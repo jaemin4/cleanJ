@@ -47,12 +47,12 @@ public class PaymentTransaction {
             balanceService.use(criteria.toBalanceUseCommand(finalAmount));
 
             /*
-                3. 주문결과변경
+                3. 주문상태변경
             */
             orderService.updateOrderStatus(criteria.getOrderId(), OrderStatus.PAID);
 
             /*
-                4. 외북 API 호출
+                4. 외부 API 호출
             */
             PaymentMockResponse.MockPay mockPaymentResponse = mockPaymentService.callAndValidateMockApi(
                     criteria.toPaymentMockRequest(order.getProductTotalPrice())
@@ -66,24 +66,16 @@ public class PaymentTransaction {
                 5. 결제내역 저장
             */
             rabbitTemplate.convertAndSend(
-                    "exchange.payment.history", "route.payment.history.save",
+                    "exchange.payment.history", "route.payment.history.db.save",
                     criteria.toPaymentHistoryConsumerCommand(finalAmount,mockPaymentResponse.getTransactionId(),mockPaymentResponse.getStatus())
             );
 
+            /*
+                6. Redis 랭킹 업데이트
+            */
 
 
-/*            try {
-                paymentHistoryService.recordPaymentHistory(
-                        criteria.toPaymentHistoryCommand(
-                                mockPaymentResponse.getTransactionId(),
-                                mockPaymentResponse.getStatus(),
-                                criteria.getOrderId()
-                        )
-                );
-            } catch (Exception e) {
-                log.error("결제 이력 저장 실패: orderId={}, txId={}, error={}",
-                        criteria.getOrderId(), mockPaymentResponse.getTransactionId(), e.getMessage());
-            }*/
+
 
         }
 

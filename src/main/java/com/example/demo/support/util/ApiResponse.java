@@ -1,4 +1,4 @@
-package com.example.demo.support;
+package com.example.demo.support.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;

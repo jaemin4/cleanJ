@@ -42,21 +42,29 @@ public class RabbitmqConfig {
         PaymentHistory
     */
     @Bean
-    public DirectExchange exchangePaymentHistory() {
-        return new DirectExchange("exchange.payment.history");
+    public Queue queuePaymentHistoryDbSave() {
+        return new Queue("queue.payment.history.db.save", true);
     }
 
     @Bean
-    public Queue queuePaymentHistorySave() {
-        return new Queue("queue.payment.history.save", true);
-    }
-
-    @Bean
-    public Binding bindingPaymentHistorySave(Queue queuePaymentHistorySave, DirectExchange exchangePaymentHistory) {
-        return BindingBuilder.bind(queuePaymentHistorySave)
+    public Binding bindingPaymentHistoryDbSave(Queue queuePaymentHistoryDbSave, DirectExchange exchangePaymentHistory) {
+        return BindingBuilder.bind(queuePaymentHistoryDbSave)
                 .to(exchangePaymentHistory)
-                .with("route.payment.history.save");
+                .with("route.payment.history.db.save");
     }
+
+    @Bean
+    public Queue queuePaymentHistoryRankingUpdate() {
+        return new Queue("queue.payment.history.redis.update", true);
+    }
+
+    @Bean
+    public Binding bindingPaymentHistoryRankingUpdate(Queue queuePaymentHistoryRankingUpdate, DirectExchange exchangePaymentHistory) {
+        return BindingBuilder.bind(queuePaymentHistoryRankingUpdate)
+                .to(exchangePaymentHistory)
+                .with("route.payment.history.redis.update");
+    }
+
 
     @Bean
     public ConnectionFactory connectionFactory() {

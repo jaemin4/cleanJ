@@ -2,7 +2,7 @@ package com.example.demo.interfaces.product;
 
 import com.example.demo.domain.product.ProductInfo;
 import com.example.demo.domain.product.ProductService;
-import com.example.demo.support.ApiResponse;
+import com.example.demo.support.util.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
