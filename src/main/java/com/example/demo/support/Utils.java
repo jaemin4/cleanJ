@@ -36,4 +36,16 @@ public class Utils {
         }
     }
 
+    /**
+     * 소수점 이하를 반올림하여 long 타입으로 변환합니다.
+     *
+     * @param price 원래 금액 (정수 또는 소수)
+     * @return 반올림된 long 값
+     */
+    public static long toRoundedLong(double price) {
+        return BigDecimal.valueOf(price)
+                .setScale(0, RoundingMode.HALF_UP)
+                .longValue();
+    }
+
 }

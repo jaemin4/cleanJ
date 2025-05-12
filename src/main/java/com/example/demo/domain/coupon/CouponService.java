@@ -47,24 +47,31 @@ public class CouponService {
         final long userId = command.getUserId();
         final long userCouponId = command.getUserCouponId();
 
-        UserCoupon userCoupon = validUserCoupon(userId,userCouponId);
+        UserCoupon userCoupon = findUserCoupon(userId,userCouponId);
         userCoupon.markAsUsed();
 
         userCouponRepository.save(userCoupon);
     }
 
-    public double getDiscountRate(CouponCommand.GetDiscountRate command) {
-        Coupon coupon = validCoupon(command.getCouponId());
-        return coupon.getDiscountRate();
+    public long calculateDiscountedAmount(long originalPrice, Long couponId) {
+        if (couponId == null) {
+            return originalPrice;
+        }
+
+        double discountRate = findCoupon(couponId).getDiscountRate();
+
+        long discountedPrice = (long) (originalPrice - (originalPrice * discountRate * 0.01));
+
+        return Math.max(discountedPrice, 0L);
     }
 
-    private Coupon validCoupon(Long couponId) {
+    private Coupon findCoupon(Long couponId) {
         return couponRepository.findById(couponId).orElseThrow(
                 () -> new RuntimeException("coupon could not be found")
         );
     }
 
-    private UserCoupon validUserCoupon(Long userId, Long userCouponId) {
+    private UserCoupon findUserCoupon(Long userId, Long userCouponId) {
         log.info("userId : {}, userCouponId : {}", userId, userCouponId);
         UserCoupon userCoupon = userCouponRepository.findByCouponId(userCouponId)
                 .orElseThrow(() -> new RuntimeException("쿠폰을 찾을 수 없습니다."));

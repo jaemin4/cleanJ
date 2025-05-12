@@ -19,6 +19,9 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitmqConfig {
     private final RabbitmqProperties rabbitmqProperties;
 
+    /*
+        AccessLog
+    */
     @Bean
     public DirectExchange exchangeAccessLog() {
         return new DirectExchange("exchange.access.log");
@@ -35,6 +38,25 @@ public class RabbitmqConfig {
                 .to(exchangeAccessLog)
                 .with("route.access.log.save");
     }
+    /*
+        PaymentHistory
+    */
+    @Bean
+    public DirectExchange exchangePaymentHistory() {
+        return new DirectExchange("exchange.payment.history");
+    }
+
+    @Bean
+    public Queue queuePaymentHistorySave() {
+        return new Queue("queue.payment.history.save", true);
+    }
+
+    @Bean
+    public Binding bindingPaymentHistorySave(Queue queuePaymentHistorySave, DirectExchange exchangePaymentHistory) {
+        return BindingBuilder.bind(queuePaymentHistorySave)
+                .to(exchangePaymentHistory)
+                .with("route.payment.history.save");
+    }
 
     @Bean
     public ConnectionFactory connectionFactory() {
@@ -45,6 +67,10 @@ public class RabbitmqConfig {
         connectionFactory.setPassword(rabbitmqProperties.getPassword());
         return connectionFactory;
     }
+
+    /*
+        connection
+    */
 
     @Bean
     public MessageConverter messageConverter() {
