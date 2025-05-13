@@ -5,7 +5,6 @@ import com.example.demo.domain.coupon.CouponService;
 import com.example.demo.domain.order.OrderInfo;
 import com.example.demo.domain.order.OrderService;
 import com.example.demo.domain.order.OrderStatus;
-import com.example.demo.domain.payment.PaymentHistoryService;
 import com.example.demo.domain.stock.StockService;
 import com.example.demo.infra.payment.MockPaymentService;
 import com.example.demo.infra.payment.PaymentMockResponse;
@@ -14,14 +13,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
-
-import static com.example.demo.support.constants.RabbitmqConstant.ROUTE_PAYMENT_HISTORY_DB_SAVE;
+import static com.example.demo.support.constants.RabbitmqConstant.*;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentTransaction {
-    private final PaymentHistoryService paymentHistoryService;
     private final OrderService orderService;
     private final BalanceService balanceService;
     private final MockPaymentService mockPaymentService;
@@ -31,10 +28,14 @@ public class PaymentTransaction {
 
     @Transactional
     public void processPaymentWithTransaction(PaymentCriteria.Payment criteria) {
+        OrderInfo.GetOrder order = null;
         try {
-            OrderInfo.GetOrder order = orderService.getOrderById(criteria.getOrderId());
+            order = orderService.getOrderById(criteria.getOrderId());
             long finalAmount = order.getProductTotalPrice();
-
+            if (order.getOrderStatus().equals(OrderStatus.PAID)) {
+                log.info("이미 결제된 주문입니다.");
+                throw new RuntimeException("이미 결제된 주문입니다.");
+            }
             /*
                 1. 쿠폰사용
             */
@@ -68,36 +69,41 @@ public class PaymentTransaction {
                 5. 결제내역 저장
             */
             rabbitTemplate.convertAndSend(
-                    "exchange.payment.history", ROUTE_PAYMENT_HISTORY_DB_SAVE,
-                    criteria.toPaymentHistoryConsumerCommand(finalAmount,mockPaymentResponse.getTransactionId(),mockPaymentResponse.getStatus())
+                    EXCHANGE_PAYMENT_HISTORY, ROUTE_PAYMENT_HISTORY_DB_SAVE,
+                    criteria.toPaymentHistoryConsumerCommand(finalAmount, mockPaymentResponse.getTransactionId(), mockPaymentResponse.getStatus())
             );
 
             /*
                 6. Redis 랭킹 업데이트
             */
 
+            rabbitTemplate.convertAndSend(
+                    EXCHANGE_PAYMENT_HISTORY, ROUTE_PAYMENT_HISTORY_REDIS_UPDATE,
+                    criteria.getOrderId()
+            );
 
 
-
-        }
-
-        catch (Exception e) {
+        } catch (Exception e) {
             log.warn("트랜잭션 내 결제 실패, 주문 상태 취소 및 재고 복구 수행");
 
-
             try {
-                /*
-                    1. 주문 상태 변경
-                */
-                orderService.updateOrderStatus(criteria.getOrderId(), OrderStatus.CANCELED);
-               /*
-                    2. 재고 감소 복구
-                */
-                OrderInfo.GetOrderItems getOrderItems = orderService.getOrderItemByOrderId(criteria.getOrderId());
-                stockService.recoveryStock(criteria.toRecoveryStockCommand(getOrderItems));
+                if (order != null && order.getOrderStatus().equals(OrderStatus.CREATED)) {
+                    log.info("주문 상태 복구 및 재고 복구 시작: orderId={}", criteria.getOrderId());
+
+                    // 1. 주문 상태 변경
+                    orderService.updateOrderStatus(criteria.getOrderId(), OrderStatus.CANCELED);
+
+                    // 2. 재고 복구
+                    OrderInfo.GetOrderItems getOrderItems = orderService.getOrderItemByOrderId(criteria.getOrderId());
+                    stockService.recoveryStock(criteria.toRecoveryStockCommand(getOrderItems));
+
+                    log.info("주문 취소 및 재고 복구 완료");
+                } else {
+                    log.info("이미 취소된 주문입니다. orderId={}", criteria.getOrderId());
+                }
 
             } catch (Exception recoveryEx) {
-                log.error("회복 중 추가 오류 발생: {}", recoveryEx.getMessage());
+                log.error("회복 중 추가 오류 발생: {}", recoveryEx.getMessage(), recoveryEx);
             }
 
             throw new RuntimeException("결제 처리 중 예외 발생", e);
