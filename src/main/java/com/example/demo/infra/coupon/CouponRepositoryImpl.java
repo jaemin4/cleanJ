@@ -4,7 +4,7 @@ import com.example.demo.domain.coupon.Coupon;
 import com.example.demo.domain.coupon.CouponRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -31,5 +31,10 @@ public class CouponRepositoryImpl implements CouponRepository {
     @Override
     public Optional<Coupon> findByCouponId(Long couponId) {
         return couponJpaRepository.findById(couponId);
+    }
+
+    @Override
+    public List<Coupon> findAll (){
+        return couponJpaRepository.findAll();
     }
 }

@@ -1,13 +1,19 @@
 package com.example.demo.domain.coupon;
 
+import com.example.demo.infra.coupon.CouponConsumerCommand;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import static com.example.demo.support.constants.RabbitmqConstant.EXCHANGE_COUPON;
+import static com.example.demo.support.constants.RabbitmqConstant.ROUTE_COUPON_ISSUE;
 
 @Service
 @RequiredArgsConstructor
@@ -16,30 +22,15 @@ public class CouponService {
 
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
-    private final RedissonClient redissonClient;
-    private final CouponTransactionService couponTransactionService;
+    private final RabbitTemplate rabbitTemplate;
 
     public void issue(CouponCommand.Issue command) {
-        String lockName = "lock:coupon:" + command.getCouponId();
-        RLock lock = redissonClient.getLock(lockName);
-
-        boolean isLocked = false;
-        try {
-            isLocked = lock.tryLock(5, 3, TimeUnit.SECONDS);
-            if (!isLocked) {
-                throw new IllegalStateException("락 획득 실패. 동시 요청 과다");
-            }
-
-            couponTransactionService.issueWithTransaction(command);
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("락 대기 중 인터럽트 발생", e);
-        } finally {
-            if (isLocked && lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
-        }
+        rabbitTemplate.convertAndSend(
+                EXCHANGE_COUPON,
+                ROUTE_COUPON_ISSUE,
+                CouponConsumerCommand.Issue.of(command.getUserId(), command.getCouponId())
+        );
+        log.info("쿠폰 발급 메시지 전송 완료: userId={}, couponId={}", command.getUserId(), command.getCouponId());
     }
 
     @Transactional
@@ -63,6 +54,14 @@ public class CouponService {
         long discountedPrice = (long) (originalPrice - (originalPrice * discountRate * 0.01));
 
         return Math.max(discountedPrice, 0L);
+    }
+
+    public List<CouponInfo.GetAllQuantity> findAllQuantity() {
+        List<Coupon> list = couponRepository.findAll();
+
+        return list.stream()
+                .map(coupon -> CouponInfo.GetAllQuantity.of(coupon.getId(), coupon.getQuantity()))
+                .toList();
     }
 
     private Coupon findCoupon(Long couponId) {
