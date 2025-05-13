@@ -32,7 +32,7 @@ public class PaymentFacade {
             Thread.currentThread().interrupt();
             throw new RuntimeException("결제 락 대기 중 인터럽트 발생", e);
         } catch (Exception e) {
-            throw new RuntimeException("결제 처리 중 예외 발생", e);
+            throw new RuntimeException("결제 처리 중 예외 발생 : " + e.getMessage());
         } finally {
             if (isLocked && lock.isHeldByCurrentThread()) {
                 lock.unlock();
