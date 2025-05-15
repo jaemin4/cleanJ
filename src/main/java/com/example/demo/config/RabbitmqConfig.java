@@ -79,16 +79,32 @@ public class RabbitmqConfig {
         return new DirectExchange(EXCHANGE_COUPON);
     }
 
-    @Bean
-    public Queue queueCouponIssue() {
-        return new Queue(QUEUE_COUPON_ISSUE, true);
-    }
 
     @Bean
     public Binding bindingCouponIssue(Queue queueCouponIssue, DirectExchange exchangeCoupon) {
         return BindingBuilder.bind(queueCouponIssue)
                 .to(exchangeCoupon)
                 .with(ROUTE_COUPON_ISSUE);
+    }
+
+    @Bean
+    public Queue queueCouponIssueDlq() {
+        return new Queue(QUEUE_COUPON_ISSUE_DLQ, true);
+    }
+
+    @Bean
+    public Binding bindingCouponIssueDlq() {
+        return BindingBuilder.bind(queueCouponIssueDlq())
+                .to(exchangeCoupon())
+                .with(ROUTE_COUPON_ISSUE_DLQ);
+    }
+
+    @Bean
+    public Queue queueCouponIssue() {
+        return QueueBuilder.durable(QUEUE_COUPON_ISSUE)
+                .withArgument("x-dead-letter-exchange", EXCHANGE_COUPON)
+                .withArgument("x-dead-letter-routing-key", ROUTE_COUPON_ISSUE_DLQ)
+                .build();
     }
 
     /*

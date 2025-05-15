@@ -13,10 +13,12 @@ public class RabbitmqConstant {
     public static final String QUEUE_PAYMENT_HISTORY_DB_SAVE = "queue.payment.history.db.save";
     public static final String QUEUE_PAYMENT_HISTORY_REDIS_UPDATE = "queue.payment.history.redis.update";
     public static final String QUEUE_COUPON_ISSUE = "queue.coupon.issue";
+    public static final String QUEUE_COUPON_ISSUE_DLQ = "queue.coupon.issue.dlq";
 
     // Routing Keys
     public static final String ROUTE_ACCESS_LOG_SAVE = "route.access.log.save";
     public static final String ROUTE_PAYMENT_HISTORY_DB_SAVE = "route.payment.history.db.save";
     public static final String ROUTE_PAYMENT_HISTORY_REDIS_UPDATE = "route.payment.history.redis.update";
     public static final String ROUTE_COUPON_ISSUE = "route.coupon.issue";
+    public static final String ROUTE_COUPON_ISSUE_DLQ = "route.coupon.issue.dlq";
 }

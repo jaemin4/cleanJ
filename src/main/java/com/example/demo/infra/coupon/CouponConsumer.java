@@ -4,13 +4,18 @@ import com.example.demo.domain.coupon.Coupon;
 import com.example.demo.domain.coupon.CouponRepository;
 import com.example.demo.domain.coupon.UserCoupon;
 import com.example.demo.domain.coupon.UserCouponRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import static com.example.demo.support.constants.RabbitmqConstant.QUEUE_COUPON_ISSUE;
+import static com.example.demo.support.constants.RabbitmqConstant.QUEUE_COUPON_ISSUE_DLQ;
 
 @Slf4j
 @Component
@@ -20,7 +25,7 @@ public class CouponConsumer {
 
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
-    private final RedissonClient redissonClient;
+
 
     @RabbitListener(queues = QUEUE_COUPON_ISSUE, concurrency = "1")
     public void issue(CouponConsumerCommand.Issue command) {
@@ -40,6 +45,7 @@ public class CouponConsumer {
 
         } catch (Exception e) {
             log.error("쿠폰 발급 실패: couponId={}, userId={}, error={}", command.getCouponId(), command.getUserId(), e.getMessage(), e);
+            throw new RuntimeException("쿠폰 발급 실패");
         }
     }
 
