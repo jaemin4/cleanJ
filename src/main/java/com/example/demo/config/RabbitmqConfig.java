@@ -28,6 +28,7 @@ public class RabbitmqConfig {
 
     @Bean
     public Queue queueAccessLogSave() {
+
         return new Queue(QUEUE_ACCESS_LOG_SAVE, true);
     }
 
@@ -39,7 +40,7 @@ public class RabbitmqConfig {
     }
 
     /*
-        PaymentHistory + DLQ
+        PaymentHistory
     */
     @Bean
     public DirectExchange exchangePaymentHistory() {
@@ -48,10 +49,7 @@ public class RabbitmqConfig {
 
     @Bean
     public Queue queuePaymentHistoryDbSave() {
-        return QueueBuilder.durable(QUEUE_PAYMENT_HISTORY_DB_SAVE)
-                .withArgument("x-dead-letter-exchange", DEAD_LETTER_EXCHANGE_PAYMENT)
-                .withArgument("x-dead-letter-routing-key", ROUTE_PAYMENT_HISTORY_DB_SAVE_DLQ)
-                .build();
+        return new Queue(QUEUE_PAYMENT_HISTORY_DB_SAVE, true);
     }
 
     @Bean
@@ -71,26 +69,6 @@ public class RabbitmqConfig {
         return BindingBuilder.bind(queuePaymentHistoryRankingUpdate)
                 .to(exchangePaymentHistory)
                 .with(ROUTE_PAYMENT_HISTORY_REDIS_UPDATE);
-    }
-
-    /*
-        PaymentHistory DLQ
-    */
-    @Bean
-    public DirectExchange deadLetterExchange() {
-        return new DirectExchange(DEAD_LETTER_EXCHANGE_PAYMENT);
-    }
-
-    @Bean
-    public Queue queuePaymentHistoryDbSaveDLQ() {
-        return new Queue(QUEUE_PAYMENT_HISTORY_DB_SAVE_DLQ, true);
-    }
-
-    @Bean
-    public Binding bindingPaymentHistoryDbSaveDLQ(Queue queuePaymentHistoryDbSaveDLQ, DirectExchange deadLetterExchange) {
-        return BindingBuilder.bind(queuePaymentHistoryDbSaveDLQ)
-                .to(deadLetterExchange)
-                .with(ROUTE_PAYMENT_HISTORY_DB_SAVE_DLQ);
     }
 
     /*
