@@ -16,14 +16,19 @@ import com.example.demo.domain.product.ProductSellingStatus;
 import com.example.demo.domain.stock.Stock;
 import com.example.demo.infra.stock.StockJpaRepository;
 import com.example.demo.support.util.Utils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.RedisTemplate;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.ArrayList;
+
+import static com.example.demo.infra.payment.PaymentPopularScheduler.POPULAR_PRODUCTS_KEY;
+import static com.example.demo.support.util.Utils.toJson;
 
 @SpringBootTest
 public class PopularTest {
@@ -48,6 +53,12 @@ public class PopularTest {
 
     @Autowired
     PaymentHistoryRepository paymentHistoryRepository;
+
+    @Autowired
+    ObjectMapper objectMapper;
+
+    @Autowired
+    RedisTemplate<String, Object> redisTemplate;
 
     @DisplayName("20명 동시 주문/결제 후 인기상품 랭킹 조회")
     @Test
@@ -93,7 +104,7 @@ public class PopularTest {
         executor.awaitTermination(10, java.util.concurrent.TimeUnit.SECONDS);
 
         List<PaymentHistoryInfo.Top5OrdersForCaching> top5 = paymentHistoryService.getPopularProducts();
-        System.out.println("Redis 랭킹: " + Utils.toJson(top5));
+        System.out.println("Redis 랭킹: " + toJson(top5));
         long redisCount = top5.getFirst().getCount();
 
         long dbCount = paymentHistoryRepository.findTop5OrdersByPaidStatus().size();
@@ -102,6 +113,33 @@ public class PopularTest {
         org.assertj.core.api.Assertions.assertThat(redisCount).isEqualTo(dbCount);
     }
 
+    @DisplayName("캐시 미스 발생 시 DB에서 조회 후 Redis에 캐싱되는지 테스트")
+    @Test
+    void 캐시미스_테스트() throws Exception {
+        Product p = Product.create("딸기케이크", 3000L, ProductSellingStatus.SELLING);
+        productRepository.save(p);
+        stockRepository.save(new Stock(p.getId(), 10));
+
+        for (long userId = 1; userId <= 5; userId++) {
+            balanceRepository.save(Balance.create(userId, 100_000L));
+
+            OrderResult.Order orderResult = orderFacade.order(OrderCriteria.Order.of(
+                    userId, List.of(OrderCriteria.OrderProduct.of(p.getId(), 1L))
+            ));
+
+            paymentFacade.pay(PaymentCriteria.Payment.of(orderResult.getOrderId(), userId, null));
+        }
+
+        redisTemplate.delete(POPULAR_PRODUCTS_KEY);
+        List<PaymentHistoryInfo.Top5OrdersForCaching> top5 = paymentHistoryService.getPopularProducts();
+        System.out.println("Redis 랭킹: " + toJson(top5));
+        long redisCount = top5.getFirst().getCount();
+
+        long dbCount = paymentHistoryRepository.findTop5OrdersByPaidStatus().size();
+        System.out.println("DB 결제 건수: " + dbCount);
+
+        org.assertj.core.api.Assertions.assertThat(redisCount).isEqualTo(dbCount);
+    }
 
 
 }
