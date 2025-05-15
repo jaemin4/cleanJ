@@ -1,6 +1,5 @@
 package com.example.demo.infra.coupon;
 
-import com.example.demo.domain.coupon.CouponCommand;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,9 +8,10 @@ import lombok.NoArgsConstructor;
 public class CouponConsumerCommand {
 
     @Getter
+    @NoArgsConstructor
     public static class Issue{
-        private final Long userId;
-        private final Long couponId;
+        private Long userId;
+        private Long couponId;
 
         private Issue(Long userId, Long couponId) {
             this.userId = userId;

@@ -1,12 +1,14 @@
 package com.example.demo.domain.coupon;
 
 import com.example.demo.infra.coupon.CouponConsumerCommand;
+import com.example.demo.infra.coupon.CouponScheduler;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,13 +25,33 @@ public class CouponService {
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final RedisTemplate<String,Object> redisTemplate;
 
     public void issue(CouponCommand.Issue command) {
+        couponRepository.findByCouponId(command.getCouponId())
+                .orElseThrow(() -> new RuntimeException("coupon not found"));
+
+        String redisKey = CouponScheduler.COUPON_ISSUE_KEY;
+        Long couponId = command.getCouponId();
+
+        Double score = redisTemplate.opsForZSet().score(redisKey, couponId);
+        if (score == null || score < 1) {
+            throw new IllegalStateException("쿠폰 재고 부족");
+        }
+
+        Double remain = redisTemplate.opsForZSet().incrementScore(redisKey, couponId, -1);
+
+        if (remain == null || remain < 0) {
+            redisTemplate.opsForZSet().incrementScore(redisKey, couponId, 1);
+            throw new IllegalStateException("쿠폰 재고 부족 (차감 실패)");
+        }
+
         rabbitTemplate.convertAndSend(
                 EXCHANGE_COUPON,
                 ROUTE_COUPON_ISSUE,
                 CouponConsumerCommand.Issue.of(command.getUserId(), command.getCouponId())
         );
+
         log.info("쿠폰 발급 메시지 전송 완료: userId={}, couponId={}", command.getUserId(), command.getCouponId());
     }
 
