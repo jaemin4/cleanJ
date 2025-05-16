@@ -58,7 +58,7 @@ public class AccessLogFilter implements Filter {
                 responseAt
         );
 
-        log.info("AccessLog : {}", Utils.toJson(accessLog));
+        log.info("AccessLog Filter : {}", Utils.toJson(accessLog));
         rabbitTemplate.convertAndSend(EXCHANGE_ACCESS_LOG,ROUTE_ACCESS_LOG_SAVE,accessLog.toCommand());
         res.copyBodyToResponse();
 
