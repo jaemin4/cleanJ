@@ -26,21 +26,50 @@ public class CouponService {
     private final UserCouponRepository userCouponRepository;
     private final RabbitTemplate rabbitTemplate;
     private final RedisTemplate<String,Object> redisTemplate;
+    private final RedissonClient redissonClient;
 
     public void issue(CouponCommand.Issue command) {
-        couponRepository.findByCouponId(command.getCouponId())
-                .orElseThrow(() -> new RuntimeException("coupon not found"));
-
-        String redisKey = CouponScheduler.COUPON_ISSUE_KEY;
         Long couponId = command.getCouponId();
+        String redisKey = CouponScheduler.COUPON_ISSUE_KEY;
 
         Double score = redisTemplate.opsForZSet().score(redisKey, couponId);
-        if (score == null || score < 1) {
+        if (score == null) {
+            RLock lock = redissonClient.getLock("lock:coupon:init:" + couponId);
+            boolean isLocked = false;
+
+            try {
+                isLocked = lock.tryLock(3, 1, TimeUnit.SECONDS);
+                if (isLocked) {
+                    score = redisTemplate.opsForZSet().score(redisKey, couponId);
+                    if (score == null) {
+                        Coupon coupon = couponRepository.findByCouponId(couponId)
+                                .orElseThrow(() -> new RuntimeException("coupon not found"));
+                        redisTemplate.opsForZSet().add(redisKey, couponId, (double) coupon.getQuantity());
+                        log.info("[CACHE INIT] 쿠폰 ZSET 초기화: couponId={}, quantity={}", couponId, coupon.getQuantity());
+                        score = (double) coupon.getQuantity();
+                    }
+                } else {
+                    Thread.sleep(100);
+                    score = redisTemplate.opsForZSet().score(redisKey, couponId);
+                    if (score == null) {
+                        throw new IllegalStateException("쿠폰 캐시 초기화 실패");
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("락 대기 중 인터럽트 발생", e);
+            } finally {
+                if (isLocked && lock.isHeldByCurrentThread()) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        if (score < 1) {
             throw new IllegalStateException("쿠폰 재고 부족");
         }
 
         Double remain = redisTemplate.opsForZSet().incrementScore(redisKey, couponId, -1);
-
         if (remain == null || remain < 0) {
             redisTemplate.opsForZSet().incrementScore(redisKey, couponId, 1);
             throw new IllegalStateException("쿠폰 재고 부족 (차감 실패)");
@@ -49,11 +78,12 @@ public class CouponService {
         rabbitTemplate.convertAndSend(
                 EXCHANGE_COUPON,
                 ROUTE_COUPON_ISSUE,
-                CouponConsumerCommand.Issue.of(command.getUserId(), command.getCouponId())
+                CouponConsumerCommand.Issue.of(command.getUserId(), couponId)
         );
 
-        log.info("쿠폰 발급 메시지 전송 완료: userId={}, couponId={}", command.getUserId(), command.getCouponId());
+        log.info("쿠폰 발급 메시지 전송 완료: userId={}, couponId={}", command.getUserId(), couponId);
     }
+
 
     @Transactional
     public void use(CouponCommand.Use command) {
