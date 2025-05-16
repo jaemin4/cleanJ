@@ -1,13 +1,19 @@
 package com.example.demo.concurrency;
 
 import com.example.demo.domain.coupon.*;
+import com.example.demo.infra.coupon.CouponConsumerCommand;
+import com.example.demo.infra.coupon.CouponScheduler;
+import com.example.demo.support.constants.RabbitmqConstant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.IntStream;
+
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.springframework.amqp.rabbit.support.micrometer.RabbitTemplateObservation.TemplateLowCardinalityTags.ROUTING_KEY;
 
 @SpringBootTest
 public class CouponTest {
@@ -21,16 +27,20 @@ public class CouponTest {
     @Autowired
     private UserCouponRepository userCouponRepository;
 
+    @Autowired
+    private CouponScheduler couponScheduler;
 
     @Test
-    public void 쿠폰_200명_발급_테스트_동시성_성공_확인() throws InterruptedException {
+    public void 쿠폰_200명_발급_테스트_동시성_성공_비동기() throws InterruptedException {
         Coupon coupon = Coupon.create("테스트 쿠폰", 100, 100L);
         Coupon saved = couponRepository.save(coupon);
         Long couponId = saved.getId();
-        System.out.println("[Init] 쿠폰 수량 = " + coupon.getQuantity());
+
+        couponScheduler.initCoupon();
+        Thread.sleep(300);
 
         int userCount = 200;
-        ExecutorService executorService = Executors.newFixedThreadPool(10);
+        ExecutorService executorService = Executors.newFixedThreadPool(32);
         CountDownLatch latch = new CountDownLatch(userCount);
 
         for (long userId = 1; userId <= userCount; userId++) {
@@ -48,8 +58,12 @@ public class CouponTest {
         }
 
         latch.await();
+        executorService.shutdown();
 
-        long remaining = couponRepository.findById(couponId).get().getQuantity();
+        // 큐 처리 완료 대기
+        Thread.sleep(15_000);
+
+        long remaining = couponRepository.findById(couponId).orElseThrow().getQuantity();
         long issuedCount = userCouponRepository.count();
 
         System.out.println("[Result] 남은 수량: " + remaining);
@@ -57,11 +71,6 @@ public class CouponTest {
 
         assertThat(issuedCount).isEqualTo(100L);
     }
-
-
-
-
-
 
 
 }

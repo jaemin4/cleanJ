@@ -1,7 +1,7 @@
 package com.example.demo.interfaces.order;
 
 import com.example.demo.application.order.OrderFacade;
-import com.example.demo.support.ApiResponse;
+import com.example.demo.support.util.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;

@@ -30,9 +30,10 @@ public class PaymentResponse {
     }
 
     @Getter
-    static class Top5OrdersCaching{
-        private final Long orderId;
-        private final Long count;
+    @NoArgsConstructor
+    public static class Top5OrdersCaching{
+        private Long orderId;
+        private Long count;
 
         private Top5OrdersCaching(Long orderId, Long count) {
             this.orderId = orderId;

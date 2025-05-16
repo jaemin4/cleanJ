@@ -1,6 +1,6 @@
 package com.example.demo.support.exception;
 
-import com.example.demo.support.ApiResponse;
+import com.example.demo.support.util.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
@@ -41,10 +41,10 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Object> handleException(Exception e) {
         return ApiResponse.fail(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                HttpStatus.BAD_REQUEST.value(),
                 "예기치 못한 오류가 발생했습니다."
         );
     }

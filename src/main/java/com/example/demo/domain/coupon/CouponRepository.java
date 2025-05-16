@@ -1,5 +1,6 @@
 package com.example.demo.domain.coupon;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface CouponRepository {
@@ -7,5 +8,6 @@ public interface CouponRepository {
     Optional<Coupon> findById(long couponId);
     Optional<Coupon> findByCouponIdForLock(Long couponId);
     Optional<Coupon> findByCouponId(Long couponId);
+    List<Coupon> findAll();
 
 }

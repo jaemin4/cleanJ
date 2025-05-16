@@ -30,6 +30,15 @@ spring:
     port: 5672
     username: guest
     password: guest
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+    template:
+      retry:
+        enabled: true
 
   datasource:
     url: jdbc:mysql://my8003.gabiadb.com:3306/jmdb?useUnicode=true&characterEncoding=utf-8&characterSetResults=utf-8&serverTimezone=Asia/Seoul

@@ -1,4 +1,4 @@
-package com.example.demo.support;
+package com.example.demo.support.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,5 +35,4 @@ public class Utils {
             return null;
         }
     }
-
 }
