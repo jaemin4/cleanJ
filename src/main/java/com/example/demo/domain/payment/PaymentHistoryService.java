@@ -45,12 +45,7 @@ public class PaymentHistoryService {
                 redisTemplate.opsForZSet().reverseRangeWithScores(POPULAR_PRODUCTS_KEY, 0, 4);
 
         if (zset != null && !zset.isEmpty()) {
-            return zset.stream()
-                    .map(tuple -> new PaymentHistoryInfo.Top5OrdersForCaching(
-                            Long.valueOf(Objects.requireNonNull(tuple.getValue()).toString()),
-                            Objects.requireNonNull(tuple.getScore()).longValue()
-                    ))
-                    .toList();
+            return mapToCachingList(zset);
         }
 
         RLock lock = redissonClient.getLock("lock:popular:top5");
@@ -62,38 +57,29 @@ public class PaymentHistoryService {
             if (isLocked) {
                 zset = redisTemplate.opsForZSet().reverseRangeWithScores(POPULAR_PRODUCTS_KEY, 0, 4);
                 if (zset != null && !zset.isEmpty()) {
-                    return zset.stream()
-                            .map(tuple -> new PaymentHistoryInfo.Top5OrdersForCaching(
-                                    Long.valueOf(Objects.requireNonNull(tuple.getValue()).toString()),
-                                    Objects.requireNonNull(tuple.getScore()).longValue()
-                            ))
-                            .toList();
+                    return mapToCachingList(zset);
                 }
 
+                redisTemplate.delete(POPULAR_PRODUCTS_KEY);
                 List<ResTopOrderFive> popularProducts = paymentHistoryRepository.findTop5OrdersByPaidStatus();
 
                 for (ResTopOrderFive item : popularProducts) {
                     redisTemplate.opsForZSet().add(POPULAR_PRODUCTS_KEY, item.getOrderId(), item.getCount());
                 }
 
-                log.info("[CACHE] 인기 상품 ZSET 캐시 저장 완료");
+                redisTemplate.expire(POPULAR_PRODUCTS_KEY, 10, TimeUnit.MINUTES); // TTL 10분 설정
+                log.info("[CACHE] 인기 상품 ZSET 캐시 재등록 완료");
+
                 return PaymentHistoryInfo.Top5OrdersForCaching.fromResTopList(popularProducts);
             } else {
-                log.warn("[LOCK] 락 획득 실패 - 100ms 후 재시도");
+                log.warn("[LOCK] 락 획득 실패 - 캐시 재시도");
                 Thread.sleep(100);
 
                 zset = redisTemplate.opsForZSet().reverseRangeWithScores(POPULAR_PRODUCTS_KEY, 0, 4);
                 if (zset != null && !zset.isEmpty()) {
-                    log.info("[CACHE] 재시도 후 ZSET 캐시 HIT");
-                    return zset.stream()
-                            .map(tuple -> new PaymentHistoryInfo.Top5OrdersForCaching(
-                                    Long.valueOf(Objects.requireNonNull(tuple.getValue()).toString()),
-                                    Objects.requireNonNull(tuple.getScore()).longValue()
-                            ))
-                            .toList();
+                    return mapToCachingList(zset);
                 } else {
-                    log.error("[CACHE] 캐시 초기화 대기 중에도 ZSET 없음 - 실패 처리");
-                    throw new IllegalStateException("ZSET 캐시 초기화 대기 중 실패");
+                    throw new IllegalStateException("캐시 초기화 대기 중에도 ZSET 없음 - 실패 처리");
                 }
             }
 
@@ -101,7 +87,7 @@ public class PaymentHistoryService {
             Thread.currentThread().interrupt();
             throw new RuntimeException("락 대기 중 인터럽트 발생", e);
         } catch (Exception e) {
-            log.error("[ERROR] 인기 상품 조회 실패 - 원인: {}", e.getMessage(), e);
+            log.error("[ERROR] 인기 상품 조회 실패: {}", e.getMessage(), e);
             throw new RuntimeException("인기 상품 조회 실패", e);
         } finally {
             if (isLocked && lock.isHeldByCurrentThread()) {
@@ -110,7 +96,14 @@ public class PaymentHistoryService {
         }
     }
 
-
+    private List<PaymentHistoryInfo.Top5OrdersForCaching> mapToCachingList(Set<ZSetOperations.TypedTuple<Object>> zset) {
+        return zset.stream()
+                .map(tuple -> new PaymentHistoryInfo.Top5OrdersForCaching(
+                        Long.parseLong(String.valueOf(tuple.getValue())),
+                        tuple.getScore().longValue()
+                ))
+                .toList();
+    }
 
 
 
