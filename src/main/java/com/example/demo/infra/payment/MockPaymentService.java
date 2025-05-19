@@ -24,11 +24,11 @@ public class MockPaymentService {
             log.info("요청 바디: orderId={}, userId={}, amount={}", orderId, userId, amount);
 
             // 실제로 POST 요청 전송 (응답은 무시)
-            restTemplate.postForEntity(
-                    MOCK_API_URL,
-                    request,
-                    String.class
-            );
+//            restTemplate.postForEntity(
+//                    MOCK_API_URL,
+//                    request,
+//                    String.class
+//            );
 
             log.info("고정 결제 성공 응답 반환");
             return PaymentMockResponse.MockPay.of(

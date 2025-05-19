@@ -5,6 +5,7 @@ import com.example.demo.domain.coupon.CouponCommand;
 import com.example.demo.domain.order.OrderInfo;
 import com.example.demo.domain.payment.PaymentHistoryCommand;
 import com.example.demo.domain.stock.StockCommand;
+import com.example.demo.infra.payment.PaymentHistoryConsumerCommand;
 import com.example.demo.infra.payment.PaymentMockRequest;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -40,16 +41,8 @@ public class PaymentCriteria {
             return PaymentMockRequest.Mock.of(orderId,userId,amount);
         }
 
-        public PaymentHistoryCommand.Save toPaymentHistoryCommand(String transactionId, String status, Long amount ) {
-            return PaymentHistoryCommand.Save.of(userId,amount,orderId,transactionId,status);
-        }
-
         public CouponCommand.Use toUseCouponCommand() {
             return CouponCommand.Use.of(userId,couponId);
-        }
-
-        public CouponCommand.GetDiscountRate toGetDiscountRateCommand() {
-            return CouponCommand.GetDiscountRate.of(couponId);
         }
 
         public StockCommand.RecoveryStock toRecoveryStockCommand(OrderInfo.GetOrderItems getOrderItems) {
@@ -59,6 +52,11 @@ public class PaymentCriteria {
 
             return StockCommand.RecoveryStock.of(products);
         }
+
+        public PaymentHistoryConsumerCommand.Save toPaymentHistoryConsumerCommand(long amount,String transactionId,String status) {
+            return PaymentHistoryConsumerCommand.Save.of(userId,amount,transactionId,status,orderId);
+        }
+
 
     }
 

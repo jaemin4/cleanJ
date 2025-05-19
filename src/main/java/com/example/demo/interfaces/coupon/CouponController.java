@@ -1,7 +1,7 @@
 package com.example.demo.interfaces.coupon;
 
 import com.example.demo.domain.coupon.CouponService;
-import com.example.demo.support.ApiResponse;
+import com.example.demo.support.util.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -7,6 +7,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Entity
@@ -106,5 +109,9 @@ public class AccessLog {
                 save.getResponseAt(),
                 save.getDurationMs()
         );
+    }
+
+    public static List<AccessLog> of(List<AccessLogConsumerCommand.Save> saveList){
+        return saveList.stream().map(AccessLog::of).collect(Collectors.toList());
     }
 }

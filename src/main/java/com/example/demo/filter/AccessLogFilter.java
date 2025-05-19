@@ -1,6 +1,6 @@
 package com.example.demo.filter;
 
-import com.example.demo.support.Utils;
+import com.example.demo.support.util.Utils;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,6 +15,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.stream.Collectors;
+
+import static com.example.demo.support.constants.RabbitmqConstant.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -56,8 +58,8 @@ public class AccessLogFilter implements Filter {
                 responseAt
         );
 
-        log.info("AccessLog : {}", Utils.toJson(accessLog));
-        rabbitTemplate.convertAndSend("exchange.access.log","route.access.log.save",accessLog.toCommand());
+        log.info("AccessLog Filter : {}", Utils.toJson(accessLog));
+        rabbitTemplate.convertAndSend(EXCHANGE_ACCESS_LOG,ROUTE_ACCESS_LOG_SAVE,accessLog.toCommand());
         res.copyBodyToResponse();
 
     }
