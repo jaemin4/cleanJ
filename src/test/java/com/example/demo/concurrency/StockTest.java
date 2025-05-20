@@ -72,5 +72,45 @@ public class StockTest {
     }
 
 
+    @DisplayName("재고 회복 동시성 제어 성공")
+    @Test
+    public void 재고_동시_회복_성공_테스트() throws InterruptedException {
+        Product product = Product.create("TestProduct", 10000, ProductSellingStatus.SELLING);
 
+        productJpaRepository.save(product);
+
+        Long productId = product.getId();
+        int initialQuantity = 100;
+        Long deductQuantity = 1L;
+        int threadCount = 100;
+
+        Stock stock = Stock.create(productId, initialQuantity);
+        stockJpaRepository.save(stock);
+
+        ExecutorService executorService = Executors.newFixedThreadPool(10);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+
+        // when
+        for (int i = 0; i < threadCount; i++) {
+            executorService.execute(() -> {
+                try {
+                    StockCommand.RecoveryStock command = StockCommand.RecoveryStock.of(
+                            List.of(StockCommand.OrderProduct.of(productId, deductQuantity))
+                    );
+                    stockService.recoveryStock(command);
+                } catch (Exception e) {
+                    System.out.println("예외 발생: " + e.getMessage());
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+
+        // then
+        Stock updated = stockJpaRepository.findByProductId(productId).orElseThrow();
+        System.out.println("남은 수량: " + updated.getQuantity());
+        assertThat(updated.getQuantity()).isEqualTo(200);
+    }
 }
