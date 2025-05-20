@@ -14,12 +14,23 @@ public class StockTransactionService {
     @Transactional
     public void deductStockWithTransaction(StockCommand.DeductStock command) {
         command.getProducts().forEach(product -> {
-            Stock stock = stockRepository.findWithPessimisticLock(product.getProductId())
+            Stock stock = stockRepository.findByProductId(product.getProductId())
                     .orElseThrow(() -> new IllegalStateException("재고가 존재하지 않습니다."));
 
             stock.deduct(product.getQuantity().intValue());
             stockRepository.save(stock);
         });
+    }
+
+    @Transactional
+    public void recoveryStockWithTransaction(StockCommand.RecoveryStock command) {
+            command.getProducts().forEach(product -> {
+                Stock stock = stockRepository.findByProductId(product.getProductId())
+                        .orElseThrow(() -> new IllegalStateException("재고가 존재하지 않습니다."));
+
+                stock.recovery(product.getQuantity().intValue());
+                stockRepository.save(stock);
+            });
     }
 
 }
