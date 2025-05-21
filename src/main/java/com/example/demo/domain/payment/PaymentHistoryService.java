@@ -9,6 +9,8 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Objects;
@@ -27,7 +29,11 @@ public class PaymentHistoryService {
     private final ObjectMapper objectMapper;
     private final RedissonClient redissonClient;
 
-    @Transactional
+    @Retryable(
+            exceptionExpression = "#{exception instanceof T(java.lang.Exception)}",
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 0)
+    )
     public void recordPaymentHistory(PaymentHistoryCommand.Save command) {
         PaymentHistory paymentHistory = PaymentHistory.create(
                 command.getUserId(),command.getAmount(),
