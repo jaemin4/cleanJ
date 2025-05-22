@@ -11,6 +11,9 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
 import static com.example.demo.support.constants.RabbitmqConstant.EXCHANGE_PAYMENT_HISTORY;
 import static com.example.demo.support.constants.RabbitmqConstant.ROUTE_PAYMENT_HISTORY_REDIS_UPDATE;
 
@@ -24,7 +27,7 @@ public class ExternalPaymentEventHandler {
     private final PaymentHistoryService paymentHistoryService;
     private final RabbitTemplate rabbitTemplate;
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void requestPaymentApi(PaymentEvent.RequestPaymentApi event){
         PaymentMockResponse.MockPay result = mockPaymentService.callAndValidateMockApi(
         PaymentMockRequest.Mock.of(event.getOrderId(),event.getUserId(),event.getFinalAmount()));
