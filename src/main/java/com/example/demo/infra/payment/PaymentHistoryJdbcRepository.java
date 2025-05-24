@@ -44,12 +44,13 @@ public class PaymentHistoryJdbcRepository {
 
     public List<ResTopOrderFive> findTop5OrdersByPaidStatus() {
         String sql = """
-            SELECT order_id, COUNT(*) AS cnt
-            FROM t1_payment_history
-            WHERE status = 'SUCCESS'
-            GROUP BY order_id
+            SELECT oi.product_id as order_id, SUM(oi.quantity) AS cnt
+            FROM t1_payment_history ph
+            JOIN t1_order_item oi ON ph.order_id = oi.order_id
+            WHERE ph.status = 'SUCCESS'
+            GROUP BY oi.product_id
             ORDER BY cnt DESC
-            LIMIT 5
+            LIMIT 5;
         """;
 
         return jdbcTemplate.query(sql, (rs, rowNum) ->

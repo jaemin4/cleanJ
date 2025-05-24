@@ -2,18 +2,14 @@ package com.example.demo.domain.coupon;
 
 import com.example.demo.infra.coupon.CouponConsumerCommand;
 import com.example.demo.infra.coupon.CouponScheduler;
+import com.example.demo.support.comm.aop.DistributedLock;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-
 import static com.example.demo.support.constants.RabbitmqConstant.EXCHANGE_COUPON;
 import static com.example.demo.support.constants.RabbitmqConstant.ROUTE_COUPON_ISSUE;
 
@@ -26,42 +22,21 @@ public class CouponService {
     private final UserCouponRepository userCouponRepository;
     private final RabbitTemplate rabbitTemplate;
     private final RedisTemplate<String,Object> redisTemplate;
-    private final RedissonClient redissonClient;
 
+    @DistributedLock(key = "'coupon:init:' + #command.couponId", waitTime = 3, leaseTime = 1)
     public void issue(CouponCommand.Issue command) {
         Long couponId = command.getCouponId();
         String redisKey = CouponScheduler.COUPON_ISSUE_KEY;
 
         Double score = redisTemplate.opsForZSet().score(redisKey, couponId);
         if (score == null) {
-            RLock lock = redissonClient.getLock("lock:coupon:init:" + couponId);
-            boolean isLocked = false;
-
-            try {
-                isLocked = lock.tryLock(3, 1, TimeUnit.SECONDS);
-                if (isLocked) {
-                    score = redisTemplate.opsForZSet().score(redisKey, couponId);
-                    if (score == null) {
-                        Coupon coupon = couponRepository.findByCouponId(couponId)
-                                .orElseThrow(() -> new RuntimeException("coupon not found"));
-                        redisTemplate.opsForZSet().add(redisKey, couponId, (double) coupon.getQuantity());
-                        log.info("[CACHE INIT] 쿠폰 ZSET 초기화: couponId={}, quantity={}", couponId, coupon.getQuantity());
-                        score = (double) coupon.getQuantity();
-                    }
-                } else {
-                    Thread.sleep(100);
-                    score = redisTemplate.opsForZSet().score(redisKey, couponId);
-                    if (score == null) {
-                        throw new IllegalStateException("쿠폰 캐시 초기화 실패");
-                    }
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException("락 대기 중 인터럽트 발생", e);
-            } finally {
-                if (isLocked && lock.isHeldByCurrentThread()) {
-                    lock.unlock();
-                }
+            score = redisTemplate.opsForZSet().score(redisKey, couponId);
+            if (score == null) {
+                Coupon coupon = couponRepository.findByCouponId(couponId)
+                        .orElseThrow(() -> new RuntimeException("coupon not found"));
+                redisTemplate.opsForZSet().add(redisKey, couponId, (double) coupon.getQuantity());
+                log.info("[CACHE INIT] 쿠폰 ZSET 초기화: couponId={}, quantity={}", couponId, coupon.getQuantity());
+                score = (double) coupon.getQuantity();
             }
         }
 
@@ -83,6 +58,7 @@ public class CouponService {
 
         log.info("쿠폰 발급 메시지 전송 완료: userId={}, couponId={}", command.getUserId(), couponId);
     }
+
 
 
     @Transactional

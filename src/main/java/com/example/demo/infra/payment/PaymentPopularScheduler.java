@@ -35,10 +35,14 @@ public class PaymentPopularScheduler {
                 return;
             }
 
+            redisTemplate.delete(POPULAR_PRODUCTS_KEY);
+
             List<PaymentHistoryInfo.Top5Orders> top5 = paymentHistoryService.getTop5Orders();
             for (PaymentHistoryInfo.Top5Orders order : top5) {
                 redisTemplate.opsForZSet().add(POPULAR_PRODUCTS_KEY, order.getOrderId(), order.getCount());
             }
+
+            redisTemplate.expire(POPULAR_PRODUCTS_KEY, 10, TimeUnit.MINUTES);
 
             log.info("초기 인기 상품 ZSET 등록 완료: {}", Utils.toJson(top5));
 
