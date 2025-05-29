@@ -2,17 +2,18 @@ package com.example.demo.domain.coupon;
 
 import com.example.demo.infra.coupon.CouponConsumerCommand;
 import com.example.demo.infra.coupon.CouponScheduler;
-import com.example.demo.support.comm.aop.DistributedLock;
+import com.example.demo.support.util.Utils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-
 import java.util.Collections;
 import java.util.List;
+
 import static com.example.demo.support.constants.RabbitmqConstant.EXCHANGE_COUPON;
 import static com.example.demo.support.constants.RabbitmqConstant.ROUTE_COUPON_ISSUE;
 
@@ -24,7 +25,9 @@ public class CouponService {
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
     private final RabbitTemplate rabbitTemplate;
-    private final RedisTemplate<String,Object> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
 
     public void issue(CouponCommand.Issue command) {
         Long couponId = command.getCouponId();
@@ -50,13 +53,15 @@ public class CouponService {
             throw new IllegalStateException("쿠폰 재고 부족");
         }
 
-        rabbitTemplate.convertAndSend(
-                EXCHANGE_COUPON,
-                ROUTE_COUPON_ISSUE,
-                CouponConsumerCommand.Issue.of(command.getUserId(), couponId)
-        );
+        kafkaTemplate.send("coupon.issue", String.valueOf(command.getCouponId()), CouponConsumerCommand.Issue.of(command.getUserId(), couponId));
+        log.info("쿠폰 발급 이벤트 발행 완료: {}", Utils.toJson(CouponConsumerCommand.Issue.of(command.getUserId(), couponId)));
 
-        log.info("쿠폰 발급 메시지 전송 완료: userId={}, couponId={}, remain={}", command.getUserId(), couponId, result);
+//        rabbitTemplate.convertAndSend(
+//                EXCHANGE_COUPON,
+//                ROUTE_COUPON_ISSUE,
+//                CouponConsumerCommand.Issue.of(command.getUserId(), couponId)
+//        );
+//        log.info("쿠폰 발급 메시지 전송 완료: userId={}, couponId={}, remain={}", command.getUserId(), couponId, result);
     }
 
     private Long tryIssueCouponAtomic(Long couponId) {
