@@ -34,6 +34,7 @@ public class CouponKafkaConsumer {
         log.info("데이터 : {}", Utils.toJson(command));
 
 
+
         try {
             log.info("데이터 : {}", Utils.toJson(command));
 
