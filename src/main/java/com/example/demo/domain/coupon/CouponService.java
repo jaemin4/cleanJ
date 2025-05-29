@@ -8,7 +8,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
+
+import java.util.Collections;
 import java.util.List;
 import static com.example.demo.support.constants.RabbitmqConstant.EXCHANGE_COUPON;
 import static com.example.demo.support.constants.RabbitmqConstant.ROUTE_COUPON_ISSUE;
@@ -23,31 +26,28 @@ public class CouponService {
     private final RabbitTemplate rabbitTemplate;
     private final RedisTemplate<String,Object> redisTemplate;
 
-    @DistributedLock(key = "'coupon:init:' + #command.couponId", waitTime = 3, leaseTime = 1)
     public void issue(CouponCommand.Issue command) {
         Long couponId = command.getCouponId();
         String redisKey = CouponScheduler.COUPON_ISSUE_KEY;
 
-        Double score = redisTemplate.opsForZSet().score(redisKey, couponId);
-        if (score == null) {
-            score = redisTemplate.opsForZSet().score(redisKey, couponId);
-            if (score == null) {
-                Coupon coupon = couponRepository.findByCouponId(couponId)
-                        .orElseThrow(() -> new RuntimeException("coupon not found"));
-                redisTemplate.opsForZSet().add(redisKey, couponId, (double) coupon.getQuantity());
-                log.info("[CACHE INIT] 쿠폰 ZSET 초기화: couponId={}, quantity={}", couponId, coupon.getQuantity());
-                score = (double) coupon.getQuantity();
+        Long result = tryIssueCouponAtomic(couponId);
+
+        if (result == null || result == -1) {
+            Coupon coupon = couponRepository.findByCouponId(couponId)
+                    .orElseThrow(() -> new RuntimeException("coupon not found"));
+
+            redisTemplate.opsForZSet().add(redisKey, couponId.toString(), coupon.getQuantity());
+            log.info("쿠폰 캐시 재초기화: couponId={}, quantity={}", couponId, coupon.getQuantity());
+
+            result = tryIssueCouponAtomic(couponId);
+
+            if (result == null || result <= 0) {
+                throw new IllegalStateException("쿠폰 발급 실패 (초기화 후에도 재고 부족)");
             }
         }
 
-        if (score < 1) {
+        if (result == 0) {
             throw new IllegalStateException("쿠폰 재고 부족");
-        }
-
-        Double remain = redisTemplate.opsForZSet().incrementScore(redisKey, couponId, -1);
-        if (remain == null || remain < 0) {
-            redisTemplate.opsForZSet().incrementScore(redisKey, couponId, 1);
-            throw new IllegalStateException("쿠폰 재고 부족 (차감 실패)");
         }
 
         rabbitTemplate.convertAndSend(
@@ -56,9 +56,28 @@ public class CouponService {
                 CouponConsumerCommand.Issue.of(command.getUserId(), couponId)
         );
 
-        log.info("쿠폰 발급 메시지 전송 완료: userId={}, couponId={}", command.getUserId(), couponId);
+        log.info("쿠폰 발급 메시지 전송 완료: userId={}, couponId={}, remain={}", command.getUserId(), couponId, result);
     }
 
+    private Long tryIssueCouponAtomic(Long couponId) {
+        String redisKey = CouponScheduler.COUPON_ISSUE_KEY;
+
+        String script =
+                "local key = KEYS[1]\n" +
+                        "local cid = tostring(ARGV[1])\n" +
+                        "local stock = redis.call('ZSCORE', key, cid)\n" +
+                        "if (not stock) then return -1 end\n" +
+                        "if (tonumber(stock) < 1) then return 0 end\n" +
+                        "local newStock = redis.call('ZINCRBY', key, -1, cid)\n" +
+                        "if (tonumber(newStock) < 0) then redis.call('ZINCRBY', key, 1, cid) return 0 end\n" +
+                        "return tonumber(newStock)";
+
+        return redisTemplate.execute(
+                new DefaultRedisScript<>(script, Long.class),
+                Collections.singletonList(redisKey),
+                couponId.toString()
+        );
+    }
 
 
     @Transactional
