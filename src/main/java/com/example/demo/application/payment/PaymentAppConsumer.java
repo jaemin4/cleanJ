@@ -10,24 +10,28 @@ import com.example.demo.domain.order.OrderStatus;
 import com.example.demo.domain.stock.StockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class PaymentEventTransaction {
+public class PaymentAppConsumer {
 
     private final OrderService orderService;
     private final StockService stockService;
     private final BalanceService balanceService;
     private final CouponService couponService;
 
-
+    @KafkaListener(
+            topics = "order.recovery",
+            groupId = "consumer-group-order-recovery", // 명확한 groupId
+            containerFactory = "kafkaListenerContainerFactory",
+            concurrency = "1"
+    )
     @Transactional
-    public void recoveryOrder(PaymentEvent.RecoveryOrder event) {
+    public void recoveryOrder(PaymentEventCommand.RecoveryOrder event) {
         try {
             OrderInfo.GetOrder order = orderService.getOrderById(event.getOrderId());
             if (order != null && order.getOrderStatus().equals(OrderStatus.CREATED)) {
@@ -45,17 +49,27 @@ public class PaymentEventTransaction {
 
         } catch (Exception recoveryEx) {
             log.error("회복 중 추가 오류 발생: {}", recoveryEx.getMessage(), recoveryEx);
-            //TODO 추가 조치 필요
+            throw new RuntimeException("회복 중 추가 오류 발생");
         }
     }
 
+    @KafkaListener(
+            topics = "payment.recovery",
+            groupId = "consumer-group-payment-recovery",
+            containerFactory = "kafkaListenerContainerFactory",
+            concurrency = "1"
+    )
     @Transactional
-    public void recoveryPayment(PaymentEvent.RecoveryPayment event){
-        if(event.getCouponId() != null){
-            couponService.issue(CouponCommand.Issue.of(event.getUserId(),event.getCouponId()));
+    public void recoveryPayment(PaymentEventCommand.RecoveryPayment event) {
+        try {
+            if (event.getCouponId() != null) {
+                couponService.issue(CouponCommand.Issue.of(event.getUserId(), event.getCouponId()));
+            }
+            balanceService.charge(BalanceCommand.Charge.of(event.getUserId(), event.getFinalAmount()));
+            orderService.updateOrderStatus(event.getOrderId(), OrderStatus.CANCELED);
+        } catch (Exception recoveryEx) {
+            log.error("결제 복구 중 오류 발생: {}", recoveryEx.getMessage(), recoveryEx);
+            throw new RuntimeException("결제 복구 중 오류 발생");
         }
-        balanceService.charge(BalanceCommand.Charge.of(event.getUserId(),event.getFinalAmount()));
-        orderService.updateOrderStatus(event.getOrderId(), OrderStatus.CANCELED);
     }
-
 }

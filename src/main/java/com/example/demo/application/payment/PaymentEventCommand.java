@@ -3,17 +3,19 @@ package com.example.demo.application.payment;
 import com.example.demo.domain.order.OrderInfo;
 import com.example.demo.domain.stock.StockCommand;
 import lombok.Getter;
-
+import lombok.NoArgsConstructor;
 import java.util.List;
 
-public class PaymentEvent {
+@NoArgsConstructor
+public class PaymentEventCommand {
 
     @Getter
+    @NoArgsConstructor
     public static class RequestPaymentApi {
-        private final Long orderId;
-        private final Long userId;
-        private final long finalAmount;
-        private final Long couponId;
+        private Long orderId;
+        private Long userId;
+        private long finalAmount;
+        private Long couponId;
 
 
         private RequestPaymentApi(Long orderId, Long userId, long finalAmount, Long couponId) {

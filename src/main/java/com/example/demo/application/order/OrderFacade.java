@@ -1,43 +1,54 @@
 package com.example.demo.application.order;
 
+import com.example.demo.domain.order.OrderInfo;
+import com.example.demo.domain.order.OrderService;
+import com.example.demo.domain.product.ProductCommand;
+import com.example.demo.domain.product.ProductService;
+import com.example.demo.domain.stock.StockService;
+import com.example.demo.support.comm.aop.DistributedLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class OrderFacade {
-    private final RedissonClient redissonClient;
-    private final OrderTransaction orderTransaction;
 
+    private final ProductService productService;
+    private final StockService stockService;
+    private final OrderService orderService;
+
+    @DistributedLock(key = "'order:user:' + #criteria.userId", waitTime = 3, leaseTime = 5)
+    @Transactional
     public OrderResult.Order order(OrderCriteria.Order criteria) {
-        String lockKey = "lock:order:user:" + criteria.getUserId();
-        RLock lock = redissonClient.getLock(lockKey);
-        boolean isLocked = false;
+        productService.findSellingProductsByIds(criteria.toProductsCommand());
 
-        try {
-            isLocked = lock.tryLock(3, 5, TimeUnit.SECONDS);
-            if (!isLocked) {
-                throw new IllegalStateException("중복 주문 요청 중입니다. 잠시 후 다시 시도해주세요.");
-            }
+        stockService.deductStock(criteria.toDeductStockCommand());
 
-            return orderTransaction.createOrderWithTransaction(criteria);
+        long productTotalAmount = productService.calculateTotalPrice(
+                ProductCommand.Products.of(
+                        criteria.getItems().stream()
+                                .map(item -> ProductCommand.Products.OrderProduct.of(item.getProductId(), item.getQuantity()))
+                                .toList()
+                )
+        );
 
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("락 대기 중 인터럽트 발생", e);
-        } catch (Exception e) {
-            throw new RuntimeException("주문 처리 실패", e);
-        } finally {
-            if (isLocked && lock.isHeldByCurrentThread()) {
-                lock.unlock();
-            }
-        }
+        OrderInfo.CreateOrder orderInfo = orderService.createOrder(criteria.toCreateOrderCommand(productTotalAmount));
+
+        return OrderResult.Order.of(
+                orderInfo.getOrderId(),
+                orderInfo.getProductTotalPrice(),
+                criteria.getItems().stream()
+                        .map(item -> OrderResult.OrderProduct.of(item.getProductId(), item.getQuantity()))
+                        .collect(Collectors.toList())
+        );
     }
 
 
